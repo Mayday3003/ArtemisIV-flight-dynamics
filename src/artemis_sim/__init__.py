@@ -1,0 +1,143 @@
+"""Simulador de dinámica de vuelo para la misión Artemis IV.
+
+Fases implementadas:
+- Fase 1: Arquitectura de datos, marco ECI (J2000) y motor de constantes físicas.
+- Fase 2: Ascenso atmosférico, solver numérico y funciones de dinámica física.
+- Fase 3: Tránsito en el vacío (N cuerpos e integración simpléctica).
+- Fase 4: Targeting de la inyección translunar (método del disparo + Newton-Raphson).
+"""
+
+from artemis_sim.ascent_solver import (
+    AscentConfig,
+    AscentPhase,
+    ThrustDirection,
+    event_core_burnout,
+    event_karman_crossing,
+    event_srb_burnout,
+    initial_state_on_pad,
+    jettison_boosters,
+    make_ascent_derivatives,
+    pitch_kick_direction,
+    radial_direction,
+)
+from artemis_sim.constants import (
+    EARTH,
+    EARTH_ROTATION,
+    G0_M_S2,
+    MOON,
+    SLS_B1B_CORE_STAGE,
+    SLS_B1B_EUS,
+    SLS_B1B_SRB_PAIR,
+    SLS_B1B_SRB_SINGLE,
+    CelestialBody,
+    EarthRotation,
+    StageSpec,
+)
+from artemis_sim.ephemeris import (
+    DEFAULT_LUNAR_CONFIG,
+    LunarOrbitConfig,
+    get_body_position,
+    get_body_velocity,
+)
+from artemis_sim.physics_engine import (
+    H_P_M,
+    H_RHO_M,
+    P0_PA,
+    RHO0_KG_M3,
+    compute_aerodynamic_drag,
+    compute_altitude,
+    compute_atmospheric_density,
+    compute_atmospheric_pressure,
+    compute_coriolis_centrifugal_accel,
+    compute_gravity,
+    compute_mass_flow,
+    compute_relative_velocity,
+    compute_thrust,
+)
+from artemis_sim.shooting_method import (
+    Propagator,
+    ShootingResult,
+    initial_guess_vis_viva,
+    make_dop853_propagator,
+    make_verlet_propagator,
+    moon_relative_target,
+    numerical_jacobian,
+    shooting_residual,
+    solve_tli_shooting,
+)
+from artemis_sim.state import ArtemisState
+from artemis_sim.symplectic_solver import (
+    circular_orbit_state,
+    compute_n_body_acceleration,
+    compute_system_energy,
+    impulsive_burn,
+    propagate_reference_dop853,
+    propagate_verlet,
+    verlet_step,
+)
+
+__all__ = [
+    # Constantes
+    "G0_M_S2",
+    "CelestialBody",
+    "EarthRotation",
+    "StageSpec",
+    "EARTH",
+    "MOON",
+    "EARTH_ROTATION",
+    "SLS_B1B_CORE_STAGE",
+    "SLS_B1B_SRB_SINGLE",
+    "SLS_B1B_SRB_PAIR",
+    "SLS_B1B_EUS",
+    # Estado
+    "ArtemisState",
+    # Física pura
+    "RHO0_KG_M3",
+    "H_RHO_M",
+    "P0_PA",
+    "H_P_M",
+    "compute_gravity",
+    "compute_altitude",
+    "compute_atmospheric_density",
+    "compute_atmospheric_pressure",
+    "compute_relative_velocity",
+    "compute_aerodynamic_drag",
+    "compute_thrust",
+    "compute_mass_flow",
+    "compute_coriolis_centrifugal_accel",
+    # Ascenso
+    "AscentPhase",
+    "AscentConfig",
+    "ThrustDirection",
+    "radial_direction",
+    "pitch_kick_direction",
+    "make_ascent_derivatives",
+    "jettison_boosters",
+    "initial_state_on_pad",
+    "event_srb_burnout",
+    "event_karman_crossing",
+    "event_core_burnout",
+    # Efemérides
+    "LunarOrbitConfig",
+    "DEFAULT_LUNAR_CONFIG",
+    "get_body_position",
+    "get_body_velocity",
+    # Tránsito en el vacío / Simpléctico
+    "compute_n_body_acceleration",
+    "verlet_step",
+    "propagate_verlet",
+    "compute_system_energy",
+    "propagate_reference_dop853",
+    "circular_orbit_state",
+    "impulsive_burn",
+    # Targeting / Disparo
+    "Propagator",
+    "ShootingResult",
+    "make_dop853_propagator",
+    "make_verlet_propagator",
+    "shooting_residual",
+    "numerical_jacobian",
+    "initial_guess_vis_viva",
+    "moon_relative_target",
+    "solve_tli_shooting",
+]
