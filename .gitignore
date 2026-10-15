@@ -8,3 +8,9 @@ __pycache__/
 dist/
 build/
 *.egg-info/
+
+# LaTeX
+*.aux
+*.log
+*.out
+*.toc

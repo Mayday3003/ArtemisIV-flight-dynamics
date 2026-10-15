@@ -35,6 +35,7 @@ from artemis_sim.ephemeris import (
     DEFAULT_LUNAR_CONFIG,
     LunarOrbitConfig,
     get_body_position,
+    get_body_velocity,
 )
 from artemis_sim.physics_engine import compute_gravity
 from artemis_sim.state import ArtemisState
@@ -429,3 +430,102 @@ def impulsive_burn(
         mass=state.mass,
         t=state.t,
     )
+
+
+def compute_jacobi_constant(
+    state: ArtemisState,
+    lunar_config: LunarOrbitConfig = DEFAULT_LUNAR_CONFIG,
+) -> float:
+    """Calcula la integral de Jacobi del CR3BP Tierra-Luna (energía en el marco rotante).
+
+    Con la Luna en órbita circular de movimiento medio n, el sistema geocéntrico con término
+    indirecto es equivalente al Problema Restringido Circular de Tres Cuerpos. En el marco
+    baricéntrico que rota con velocidad angular omega = n z, el hamiltoniano es autónomo y
+        E_J = 0.5 |v_rot|^2 - 0.5 n^2 (x_b^2 + y_b^2) - mu_E / r_1 - mu_M / r_2
+    es una constante exacta del movimiento (C_J = -2 E_J es la constante de Jacobi clásica).
+
+    Transformación desde el estado geocéntrico inercial (r, v):
+    - Baricentro: R_b = mu_M / (mu_E + mu_M) * r_M(t),  V_b = mu_M / (mu_E + mu_M) * v_M(t).
+    - rho = r - R_b,  rho_dot = v - V_b  (inercial baricéntrico).
+    - v_rot = rho_dot - omega x rho;  |omega x rho|^2 = n^2 (x_b^2 + y_b^2).
+
+    La conservación es exacta solo si n = sqrt((mu_E + mu_M) / d^3), que es el valor por
+    defecto de `LunarOrbitConfig`.
+
+    Retorna
+    -------
+    float
+        Energía de Jacobi específica E_J en m^2/s^2.
+    """
+    mu_e = EARTH.mu_m3_s2
+    mu_m = MOON.mu_m3_s2
+    n = lunar_config.mean_motion_rad_s
+    r_moon = get_body_position(MOON, state.t, config=lunar_config)
+    v_moon = get_body_velocity(MOON, state.t, config=lunar_config)
+    frac = mu_m / (mu_e + mu_m)
+
+    rho = state.position - frac * r_moon
+    rho_dot = state.velocity - frac * v_moon
+    omega = np.array([0.0, 0.0, n], dtype=np.float64)
+    v_rot = rho_dot - np.cross(omega, rho)
+
+    r1 = float(np.linalg.norm(state.position))
+    r2 = float(np.linalg.norm(state.position - r_moon))
+    return float(
+        0.5 * np.dot(v_rot, v_rot)
+        - 0.5 * n**2 * (rho[0] ** 2 + rho[1] ** 2)
+        - mu_e / r1
+        - mu_m / r2
+    )
+
+
+def propagate_rk4(
+    state: ArtemisState,
+    t_final: float,
+    dt: float,
+    sample_every: int = 1,
+    include_moon: bool = True,
+    lunar_config: LunarOrbitConfig = DEFAULT_LUNAR_CONFIG,
+) -> list[ArtemisState]:
+    """Propaga con Runge-Kutta clásico de orden 4 y paso fijo (método NO simpléctico).
+
+    Se incluye como referencia comparativa: con el mismo paso dt, RK4 tiene menor error local
+    que Verlet (O(dt^5) frente a O(dt^3)), pero su error de energía crece secularmente
+    (deriva disipativa), mientras que el de Verlet permanece acotado (conserva un
+    hamiltoniano modificado, Hairer-Lubich-Wanner 2006, cap. IX).
+    """
+    if dt <= 0.0:
+        raise ValueError(f"El paso temporal dt debe ser estrictamente positivo (> 0). Valor: {dt}")
+    if sample_every < 1:
+        raise ValueError(
+            f"sample_every debe ser un entero positivo (>= 1). Valor: {sample_every}"
+        )
+    if t_final <= state.t:
+        raise ValueError(
+            f"t_final ({t_final} s) debe ser estrictamente mayor que t_inicial ({state.t} s)."
+        )
+
+    def _f(t: float, y: npt.NDArray[np.float64]) -> npt.NDArray[np.float64]:
+        acc = compute_n_body_acceleration(
+            y[0:3], t, include_moon=include_moon, lunar_config=lunar_config
+        )
+        return np.concatenate([y[3:6], acc])
+
+    y = np.concatenate([state.position, state.velocity])
+    t = state.t
+    trajectory: list[ArtemisState] = [state.copy()]
+    step_count = 0
+    while t < t_final - 1e-12:
+        h = min(dt, t_final - t)
+        k1 = _f(t, y)
+        k2 = _f(t + 0.5 * h, y + 0.5 * h * k1)
+        k3 = _f(t + 0.5 * h, y + 0.5 * h * k2)
+        k4 = _f(t + h, y + h * k3)
+        y = y + (h / 6.0) * (k1 + 2.0 * k2 + 2.0 * k3 + k4)
+        t += h
+        step_count += 1
+        if step_count % sample_every == 0 or t >= t_final - 1e-12:
+            trajectory.append(
+                ArtemisState(position=y[0:3].copy(), velocity=y[3:6].copy(), mass=state.mass, t=t)
+            )
+    return trajectory

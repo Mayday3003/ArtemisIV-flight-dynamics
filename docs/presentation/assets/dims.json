@@ -1,0 +1,138 @@
+{
+"docs/presentation/assets/eq_lintan.png": [
+1652,
+210
+],
+"docs/presentation/assets/eq_n.png": [
+1329,
+222
+],
+"docs/presentation/assets/eq_sound.png": [
+1065,
+195
+],
+"docs/presentation/assets/eq_hmod.png": [
+1450,
+114
+],
+"docs/presentation/assets/eq_verlet.png": [
+2282,
+125
+],
+"docs/presentation/assets/eq_vrel.png": [
+603,
+101
+],
+"docs/presentation/assets/nasa_sls_block1b.jpg": [
+915,
+1248
+],
+"docs/presentation/assets/eq_kepler.png": [
+1163,
+146
+],
+"docs/presentation/assets/eq_newton.png": [
+1711,
+199
+],
+"docs/presentation/assets/eq_shoot.png": [
+1310,
+106
+],
+"docs/presentation/assets/eq_thrust.png": [
+672,
+102
+],
+"docs/presentation/assets/eq_cr3bp.png": [
+1355,
+200
+],
+"docs/presentation/assets/eq_asc_m.png": [
+640,
+226
+],
+"docs/presentation/assets/nasa_artemis_moon.jpg": [
+1392,
+1800
+],
+"docs/presentation/assets/eq_drag.png": [
+1193,
+112
+],
+"docs/presentation/assets/nasa_sls_family.jpg": [
+1800,
+1018
+],
+"docs/presentation/assets/nasa_sls_exploded.jpg": [
+1800,
+1104
+],
+"docs/presentation/assets/eq_asc_v.png": [
+918,
+227
+],
+"docs/presentation/assets/eq_k.png": [
+983,
+348
+],
+"docs/presentation/assets/nasa_sls_launch.jpg": [
+853,
+1193
+],
+"docs/presentation/assets/eq_rho.png": [
+574,
+117
+],
+"docs/presentation/assets/eq_srb.png": [
+722,
+105
+],
+"docs/presentation/assets/eq_tsiol.png": [
+602,
+189
+],
+"docs/presentation/assets/eq_jacobi.png": [
+1417,
+179
+],
+"docs/presentation/assets/eq_asc_r.png": [
+192,
+101
+],
+"docs/figures/fig07_convergencia_disparo.png": [
+2076,
+816
+],
+"docs/figures/fig02_ascenso_trayectoria.png": [
+2073,
+753
+],
+"docs/figures/fig04_orden_convergencia.png": [
+1358,
+996
+],
+"docs/figures/fig08_jacobi.png": [
+2074,
+1236
+],
+"docs/figures/fig03_conservacion_integradores.png": [
+2076,
+1476
+],
+"docs/figures/fig01_ascenso_perfil.png": [
+2075,
+2195
+],
+"docs/figures/fig05_trayectoria_tli.png": [
+2133,
+982
+],
+"docs/figures/fig06_encuentro_lunar.png": [
+1294,
+869
+],
+"docs/paper/final/logo.png": [
+287,
+176
+]
+}

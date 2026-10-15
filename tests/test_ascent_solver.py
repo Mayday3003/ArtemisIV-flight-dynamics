@@ -14,6 +14,7 @@ from artemis_sim.ascent_solver import (
     make_ascent_derivatives,
     pitch_kick_direction,
     radial_direction,
+    srb_thrust_scale,
 )
 from artemis_sim.constants import EARTH, EARTH_ROTATION, G0_M_S2
 from artemis_sim.physics_engine import (
@@ -169,7 +170,10 @@ class TestAscentSolver:
 
         # 3. La masa debe haber disminuido por el consumo de propelente
         assert final_state.mass < state_0.mass
+        # Durante 0-20 s el perfil SRB está al 100 % del pico (escalado por conservación de masa)
+        srb_scale = srb_thrust_scale(config.srb_spec, config.t_burn_srb_s)
         expected_mass_loss = (
-            abs(config.core_spec.mass_flow_rate_kg_s) + abs(config.srb_spec.mass_flow_rate_kg_s)
+            abs(config.core_spec.mass_flow_rate_kg_s)
+            + srb_scale * abs(config.srb_spec.mass_flow_rate_kg_s)
         ) * 10.0
         assert pytest.approx(state_0.mass - final_state.mass, rel=1e-3) == expected_mass_loss

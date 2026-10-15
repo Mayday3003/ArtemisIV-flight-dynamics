@@ -29,7 +29,9 @@ from artemis_sim.physics_engine import (
     compute_aerodynamic_drag,
     compute_altitude,
     compute_atmospheric_pressure,
+    compute_drag_coefficient,
     compute_gravity,
+    compute_mach_number,
     compute_mass_flow,
     compute_relative_velocity,
     compute_thrust,
@@ -119,6 +121,86 @@ def pitch_kick_direction(
     return _direction_func
 
 
+# Perfil normalizado de empuje de un SRB de 5 segmentos: (t [s], fracción del empuje pico).
+# El grano de PBAN se diseña con un empuje regresivo: alto en el despegue, reducido en la
+# región de máxima presión dinámica (Max-Q) y con una cola de apagado progresiva.
+# Forma representativa de la curva pública de Northrop Grumman (QM-1/QM-2).
+SRB_THRUST_PROFILE: tuple[tuple[float, ...], tuple[float, ...]] = (
+    (0.0, 20.0, 50.0, 80.0, 105.0, 115.0, 126.0),
+    (1.0, 1.0, 0.85, 0.90, 0.80, 0.35, 0.0),
+)
+
+
+def srb_thrust_fraction(t: float, t_burn_s: float) -> float:
+    """Fracción f(t) in [0, 1] del empuje pico de los SRB (perfil escalado a t_burn_s)."""
+    if t < 0.0 or t >= t_burn_s:
+        return 0.0
+    t_nodes = np.asarray(SRB_THRUST_PROFILE[0]) * (t_burn_s / SRB_THRUST_PROFILE[0][-1])
+    return float(np.interp(t, t_nodes, SRB_THRUST_PROFILE[1]))
+
+
+def srb_thrust_scale(spec: StageSpec, t_burn_s: float) -> float:
+    """Factor k que hace que el perfil consuma exactamente la masa de propelente de los SRB.
+
+    Conservación de masa: integral_0^tb m_dot dt = m_p, con m_dot = k f(t) T_vac / (Isp g0).
+    Por tanto k = m_p Isp g0 / (T_vac integral_0^tb f(t) dt). Con los datos nominales
+    k ≈ 1.00, lo que confirma la coherencia entre empuje pico, Isp, masa y tiempo de combustión.
+    """
+    t_nodes = np.asarray(SRB_THRUST_PROFILE[0]) * (t_burn_s / SRB_THRUST_PROFILE[0][-1])
+    integral_f = float(np.trapezoid(SRB_THRUST_PROFILE[1], t_nodes))
+    total_impulse = spec.propellant_mass_kg * spec.isp_vac_s * G0_M_S2
+    return total_impulse / (spec.thrust_vac_n * integral_f)
+
+
+def linear_tangent_direction(
+    t_kick: float = 10.0,
+    pitch_angle_rad: float = 0.02,
+    t_guidance: float = 126.0,
+    t_final: float = 480.0,
+    theta_start_rad: float = 0.4915,
+    theta_end_rad: float = 0.1548,
+    azimuth_rad: float = 1.5707963267948966,
+) -> ThrustDirection:
+    """Programa de guiado de dos tramos: giro por gravedad atmosférico + ley de tangente lineal.
+
+    - t < t_guidance: idéntico a `pitch_kick_direction` (ascenso vertical, pitch kick y giro
+      por gravedad con ángulo de ataque nulo, que minimiza las cargas aerodinámicas).
+    - t >= t_guidance (fuera de la atmósfera densa, tras separar los SRB): el ángulo de
+      cabeceo theta respecto al horizonte local sigue la ley de tangente lineal
+          tan(theta(t)) = tan(theta_0) + (tan(theta_f) - tan(theta_0)) * tau,
+          tau = (t - t_guidance) / (t_final - t_guidance) in [0, 1],
+      que es la solución óptima (máximo de velocidad final) para empuje en vacío y gravedad
+      uniforme (problema de Lawden / guiado PEG del Space Shuttle).
+      El plano de vuelo se define con la dirección horizontal de la velocidad relativa.
+
+    Los valores por defecto de theta_0 y theta_f se obtuvieron resolviendo (fsolve) las
+    condiciones de MECO h = 160 km y ángulo de trayectoria gamma = 0 con la configuración
+    nominal (ver scripts/generate_figures.py).
+    """
+    atmospheric = pitch_kick_direction(t_kick, pitch_angle_rad, azimuth_rad)
+    tan_0 = float(np.tan(theta_start_rad))
+    tan_f = float(np.tan(theta_end_rad))
+
+    def _direction_func(
+        t: float,
+        position: npt.NDArray[np.float64],
+        v_rel: npt.NDArray[np.float64],
+    ) -> npt.NDArray[np.float64]:
+        if t < t_guidance:
+            return atmospheric(t, position, v_rel)
+        r_unit = position / float(np.linalg.norm(position))
+        v_horiz = v_rel - float(np.dot(v_rel, r_unit)) * r_unit
+        h_norm = float(np.linalg.norm(v_horiz))
+        if h_norm == 0.0:
+            return r_unit
+        h_unit = v_horiz / h_norm
+        tau = min(1.0, max(0.0, (t - t_guidance) / (t_final - t_guidance)))
+        theta = float(np.arctan(tan_0 + (tan_f - tan_0) * tau))
+        return np.cos(theta) * h_unit + np.sin(theta) * r_unit
+
+    return _direction_func
+
+
 class AscentPhase(Enum):
     """Fases operativas de la propulsión durante el ascenso atmosférico."""
 
@@ -141,8 +223,9 @@ class AscentConfig:
     t_burn_srb_s : float
         Tiempo nominal de agotamiento / separación de los SRB en segundos (~126 s).
     drag_coeff : float
-        Coeficiente de arrastre aerodinámico medio.
-        # TODO: verificar, placeholder (en vuelo real Cd varía fuertemente con el número de Mach).
+        Coeficiente de arrastre constante; solo se usa si `use_mach_cd` es False.
+    use_mach_cd : bool
+        Si es True, Cd se interpola de la tabla Cd(Mach) (pico transónico incluido).
     reference_area_m2 : float
         Área de referencia aerodinámica de la sección transversal del SLS (m^2).
         Diámetro Core Stage ~8.4 m -> A ≈ pi * (4.2)^2 ≈ 55.4 m^2.
@@ -160,7 +243,8 @@ class AscentConfig:
     core_spec: StageSpec = SLS_B1B_CORE_STAGE
     upper_mass_kg: float = 180000.0  # EUS cargado (~142.6 t) + Orion (~26 t) + cofa/Gateway payload
     t_burn_srb_s: float = 126.0  # Duración nominal de combustión de los boosters de 5 segmentos
-    drag_coeff: float = 0.35  # TODO: verificar, placeholder (depende de Mach y ángulo de ataque)
+    drag_coeff: float = 0.35  # Valor constante de respaldo (use_mach_cd=False)
+    use_mach_cd: bool = True
     reference_area_m2: float = 55.4  # Sección transversal nominal de 8.4 m de diámetro
     core_exit_area_m2: float = 16.0  # TODO: verificar área de salida acumulada de 4x RS-25
     srb_exit_area_m2: float = 21.0  # TODO: verificar área de salida acumulada de 2x 5-segment SRB
@@ -193,7 +277,10 @@ def make_ascent_derivatives(
     - Presión y densidad: modelos exponenciales según la altitud h.
     - Velocidad relativa: v_rel = v - omega_E x r.
     - Empuje: se computa según los motores activos en la fase (SRB + Core o solo Core).
+      Los SRB siguen el perfil regresivo `SRB_THRUST_PROFILE`, escalado para que la masa
+      consumida en t_burn_srb_s sea exactamente su propelente (conservación de masa).
       Si la masa actual alcanza la masa de corte (sin propelente utilizable), los motores se apagan.
+    - Cd: tabla Cd(Mach) con Mach = ||v_rel|| / a(h) (US Standard Atmosphere 1976).
     - Arrastre: F_drag = -0.5 * rho * Cd * A * ||v_rel|| * v_rel (nulo si h > 100 000 m).
     - Gravedad: masa puntual pura -mu * r / ||r||^3.
     - Aceleración: a = (T_total * u + F_drag) / m + g.
@@ -208,15 +295,8 @@ def make_ascent_derivatives(
         config.core_spec.isp_vac_s,
         G0_M_S2,
     )
-    srb_mass_flow = (
-        compute_mass_flow(
-            config.srb_spec.thrust_vac_n,
-            config.srb_spec.isp_vac_s,
-            G0_M_S2,
-        )
-        if config.phase == AscentPhase.BOOSTERS_AND_CORE
-        else 0.0
-    )
+    srb_active_phase = config.phase == AscentPhase.BOOSTERS_AND_CORE
+    srb_scale = srb_thrust_scale(config.srb_spec, config.t_burn_srb_s)
 
     def _derivatives(
         t: float,
@@ -246,25 +326,23 @@ def make_ascent_derivatives(
             dm_dt += core_mass_flow
 
             # Boosters (SRB) activos solo si estamos en la fase respectiva y t < t_burn_srb
-            if config.phase == AscentPhase.BOOSTERS_AND_CORE and t < config.t_burn_srb_s:
-                t_srb = compute_thrust(
-                    config.srb_spec.thrust_vac_n,
-                    config.srb_exit_area_m2,
-                    p_a,
+            if srb_active_phase:
+                srb_vac = srb_scale * srb_thrust_fraction(t, config.t_burn_srb_s) * (
+                    config.srb_spec.thrust_vac_n
                 )
-                t_thrust_total += t_srb
-                dm_dt += srb_mass_flow
+                if srb_vac > 0.0:
+                    t_thrust_total += compute_thrust(srb_vac, config.srb_exit_area_m2, p_a)
+                    dm_dt += compute_mass_flow(srb_vac, config.srb_spec.isp_vac_s, G0_M_S2)
 
         # 3. Dirección unitaria del empuje
         u_thrust = config.thrust_direction_fn(t, pos, v_rel)
 
         # 4. Arrastre aerodinámico
-        f_drag = compute_aerodynamic_drag(
-            v_rel,
-            h,
-            config.drag_coeff,
-            config.reference_area_m2,
-        )
+        if config.use_mach_cd:
+            cd = compute_drag_coefficient(compute_mach_number(float(np.linalg.norm(v_rel)), h))
+        else:
+            cd = config.drag_coeff
+        f_drag = compute_aerodynamic_drag(v_rel, h, cd, config.reference_area_m2)
 
         # 5. Gravedad central pura
         a_grav = compute_gravity(pos, mu_earth)
@@ -281,13 +359,33 @@ def make_ascent_derivatives(
     return _derivatives
 
 
-def event_srb_burnout(t: float, state_vec: npt.NDArray[np.float64]) -> float:
-    """Evento solve_ivp: apagado por tiempo nominal de los boosters SRB (126 s)."""
-    return float(126.0 - t)
+EventFn = Callable[[float, npt.NDArray[np.float64]], float]
 
 
-event_srb_burnout.terminal = True  # type: ignore[attr-defined]
-event_srb_burnout.direction = -1  # type: ignore[attr-defined]
+def make_srb_burnout_event(config: AscentConfig) -> EventFn:
+    """Evento terminal solve_ivp: fin de combustión de los SRB en t = config.t_burn_srb_s."""
+
+    def _event(t: float, state_vec: npt.NDArray[np.float64]) -> float:
+        return float(config.t_burn_srb_s - t)
+
+    _event.terminal = True  # type: ignore[attr-defined]
+    _event.direction = -1  # type: ignore[attr-defined]
+    return _event
+
+
+def make_core_burnout_event(config: AscentConfig) -> EventFn:
+    """Evento terminal solve_ivp: agotamiento del propelente del Core (MECO).
+
+    Usa la masa de corte de la configuración (Core seco + masa superior), no constantes fijas.
+    """
+    cutoff_mass = config.core_spec.dry_mass_kg + config.upper_mass_kg
+
+    def _event(t: float, state_vec: npt.NDArray[np.float64]) -> float:
+        return float(state_vec[6] - cutoff_mass)
+
+    _event.terminal = True  # type: ignore[attr-defined]
+    _event.direction = -1  # type: ignore[attr-defined]
+    return _event
 
 
 def event_karman_crossing(t: float, state_vec: npt.NDArray[np.float64]) -> float:
@@ -301,16 +399,19 @@ event_karman_crossing.terminal = False  # type: ignore[attr-defined]
 event_karman_crossing.direction = 1  # type: ignore[attr-defined]
 
 
-def event_core_burnout(t: float, state_vec: npt.NDArray[np.float64]) -> float:
-    """Evento solve_ivp: agotamiento completo del propelente del Core Stage."""
-    m = state_vec[6]
-    # Masa seca del Core + masa inerte superior
-    cutoff_mass = SLS_B1B_CORE_STAGE.dry_mass_kg + 180000.0
-    return float(m - cutoff_mass)
+def event_ground_impact(t: float, state_vec: npt.NDArray[np.float64]) -> float:
+    """Evento terminal solve_ivp: el vehículo vuelve a la superficie (h = 0) tras despegar."""
+    if t < 1.0:
+        return 1.0
+    return compute_altitude(state_vec[0:3], EARTH.equatorial_radius_m)
 
 
-event_core_burnout.terminal = True  # type: ignore[attr-defined]
-event_core_burnout.direction = -1  # type: ignore[attr-defined]
+event_ground_impact.terminal = True  # type: ignore[attr-defined]
+event_ground_impact.direction = -1  # type: ignore[attr-defined]
+
+# Eventos por defecto (configuración nominal), conservados por compatibilidad.
+event_srb_burnout = make_srb_burnout_event(AscentConfig())
+event_core_burnout = make_core_burnout_event(AscentConfig(phase=AscentPhase.CORE_ONLY))
 
 
 def jettison_boosters(
@@ -411,4 +512,122 @@ def initial_state_on_pad(
         velocity=vel,
         mass=total_mass,
         t=0.0,
+    )
+
+
+@dataclass(frozen=True, slots=True)
+class AscentResult:
+    """Trayectoria completa del ascenso (SRB + Core) concatenada en ambos tramos.
+
+    Parámetros
+    ----------
+    t : NDArray (N,)
+        Instantes de muestreo en segundos desde el despegue (s).
+    y : NDArray (7, N)
+        Estados [x, y, z, vx, vy, vz, m] en ECI (SI). Incluye el salto de masa por
+        separación de los SRB entre los dos tramos.
+    t_srb_separation_s : float
+        Instante de separación de los SRB (s).
+    t_meco_s : float
+        Instante de apagado del Core Stage (MECO) o de fin de integración (s).
+    meco_reached : bool
+        True si el Core agotó su propelente (evento de MECO detectado).
+    """
+
+    t: npt.NDArray[np.float64]
+    y: npt.NDArray[np.float64]
+    t_srb_separation_s: float
+    t_meco_s: float
+    meco_reached: bool
+
+
+def simulate_full_ascent(
+    latitude_deg: float = 28.627,
+    longitude_deg: float = -80.621,
+    thrust_direction_fn: ThrustDirection | None = None,
+    base_config: AscentConfig | None = None,
+    t_max_s: float = 900.0,
+    rtol: float = 1e-9,
+    atol: float = 1e-6,
+    max_step_s: float = 1.0,
+) -> AscentResult:
+    """Integra el ascenso completo: SRB + Core -> separación de SRB -> solo Core -> MECO.
+
+    Tramo 1 (BOOSTERS_AND_CORE): RK45 en [0, t_burn_srb] con evento de fin de combustión.
+    Discontinuidad: `jettison_boosters` descarta la masa seca de los SRB (posición y velocidad
+    continuas, salto de masa).
+    Tramo 2 (CORE_ONLY): RK45 hasta el evento de MECO (masa de corte del Core).
+    En ambos tramos se vigila el impacto contra el suelo.
+    """
+    from scipy.integrate import solve_ivp
+
+    cfg_base = base_config if base_config is not None else AscentConfig()
+    # Por defecto: guiado nominal (giro por gravedad + tangente lineal hasta MECO a 160 km)
+    direction = (
+        thrust_direction_fn if thrust_direction_fn is not None else linear_tangent_direction()
+    )
+    cfg_1 = AscentConfig(
+        srb_spec=cfg_base.srb_spec,
+        core_spec=cfg_base.core_spec,
+        upper_mass_kg=cfg_base.upper_mass_kg,
+        t_burn_srb_s=cfg_base.t_burn_srb_s,
+        drag_coeff=cfg_base.drag_coeff,
+        use_mach_cd=cfg_base.use_mach_cd,
+        reference_area_m2=cfg_base.reference_area_m2,
+        core_exit_area_m2=cfg_base.core_exit_area_m2,
+        srb_exit_area_m2=cfg_base.srb_exit_area_m2,
+        thrust_direction_fn=direction,
+        phase=AscentPhase.BOOSTERS_AND_CORE,
+    )
+    cfg_2 = AscentConfig(
+        srb_spec=cfg_1.srb_spec,
+        core_spec=cfg_1.core_spec,
+        upper_mass_kg=cfg_1.upper_mass_kg,
+        t_burn_srb_s=cfg_1.t_burn_srb_s,
+        drag_coeff=cfg_1.drag_coeff,
+        use_mach_cd=cfg_1.use_mach_cd,
+        reference_area_m2=cfg_1.reference_area_m2,
+        core_exit_area_m2=cfg_1.core_exit_area_m2,
+        srb_exit_area_m2=cfg_1.srb_exit_area_m2,
+        thrust_direction_fn=direction,
+        phase=AscentPhase.CORE_ONLY,
+    )
+
+    state_0 = initial_state_on_pad(latitude_deg, longitude_deg, cfg_1)
+    sol_1 = solve_ivp(
+        make_ascent_derivatives(cfg_1),
+        (0.0, cfg_1.t_burn_srb_s),
+        state_0.to_array(),
+        method="RK45",
+        rtol=rtol,
+        atol=atol,
+        max_step=max_step_s,
+        events=[event_ground_impact],
+    )
+    if not sol_1.success or sol_1.t[-1] < cfg_1.t_burn_srb_s - 1e-9:
+        raise RuntimeError("El tramo SRB + Core no alcanzó la separación de los boosters.")
+
+    state_sep = ArtemisState.from_array(sol_1.y[:, -1], t=float(sol_1.t[-1]))
+    state_post = jettison_boosters(state_sep, cfg_1)
+
+    sol_2 = solve_ivp(
+        make_ascent_derivatives(cfg_2),
+        (state_post.t, t_max_s),
+        state_post.to_array(),
+        method="RK45",
+        rtol=rtol,
+        atol=atol,
+        max_step=max_step_s,
+        events=[make_core_burnout_event(cfg_2), event_ground_impact],
+    )
+    meco_reached = bool(sol_2.t_events[0].size > 0)
+
+    t_all = np.concatenate([sol_1.t, sol_2.t])
+    y_all = np.concatenate([sol_1.y, sol_2.y], axis=1)
+    return AscentResult(
+        t=t_all,
+        y=y_all,
+        t_srb_separation_s=float(sol_1.t[-1]),
+        t_meco_s=float(sol_2.t[-1]),
+        meco_reached=meco_reached,
     )

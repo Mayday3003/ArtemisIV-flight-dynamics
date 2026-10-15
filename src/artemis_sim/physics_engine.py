@@ -344,3 +344,81 @@ def compute_coriolis_centrifugal_accel(
     a_centrifugal = -np.cross(omega_vec, np.cross(omega_vec, pos))
 
     return a_coriolis + a_centrifugal
+
+
+# =============================================================================
+# TERMODINÁMICA ATMOSFÉRICA Y AERODINÁMICA DEPENDIENTE DE MACH
+# =============================================================================
+
+GAMMA_AIR: float = 1.4  # Razón de calores específicos del aire seco
+R_AIR_J_KG_K: float = 287.05287  # Constante específica del aire seco (US Standard Atmosphere 1976)
+
+# Capas de la US Standard Atmosphere 1976: (altitud base [m], temperatura base [K], gradiente [K/m])
+_US76_LAYERS: tuple[tuple[float, float, float], ...] = (
+    (0.0, 288.15, -0.0065),
+    (11_000.0, 216.65, 0.0),
+    (20_000.0, 216.65, 0.001),
+    (32_000.0, 228.65, 0.0028),
+    (47_000.0, 270.65, 0.0),
+    (51_000.0, 270.65, -0.0028),
+    (71_000.0, 214.65, -0.002),
+    (84_852.0, 186.946, 0.0),
+)
+
+# Tabla Cd(Mach) representativa de un lanzador esbelto a ángulo de ataque nulo.
+# Reproduce el pico transónico de arrastre de onda (M ≈ 1.0 - 1.2) y el decaimiento supersónico.
+# Fuente cualitativa: Sutton & Biblarz (2017), cap. 4; perfiles típicos de Saturn V / Space Shuttle.
+_CD_MACH_TABLE: tuple[tuple[float, ...], tuple[float, ...]] = (
+    (0.0, 0.6, 0.8, 0.95, 1.05, 1.2, 1.5, 2.0, 3.0, 5.0, 10.0),
+    (0.30, 0.30, 0.34, 0.45, 0.55, 0.53, 0.46, 0.40, 0.32, 0.26, 0.24),
+)
+
+
+def compute_atmospheric_temperature(altitude_m: float) -> float:
+    """Temperatura estática de la US Standard Atmosphere 1976 (capas lineales, h <= 86 km).
+
+    T(h) = T_b + L_b * (h - h_b) en la capa b que contiene a h. Para h < 0 se satura en
+    288.15 K y por encima de 84.852 km (altitud geopotencial) se mantiene la temperatura
+    de la mesopausa (186.95 K), suficiente para el cálculo de Mach en el ascenso.
+
+    Parámetros
+    ----------
+    altitude_m : float
+        Altitud sobre la superficie en metros (m).
+
+    Retorna
+    -------
+    float
+        Temperatura en kelvin (K).
+    """
+    h = max(0.0, float(altitude_m))
+    base_h, base_t, lapse = _US76_LAYERS[0]
+    for layer in _US76_LAYERS:
+        if h >= layer[0]:
+            base_h, base_t, lapse = layer
+        else:
+            break
+    return base_t + lapse * (h - base_h)
+
+
+def compute_speed_of_sound(altitude_m: float) -> float:
+    """Velocidad del sonido a = sqrt(gamma * R * T(h)) en m/s."""
+    return float(np.sqrt(GAMMA_AIR * R_AIR_J_KG_K * compute_atmospheric_temperature(altitude_m)))
+
+
+def compute_mach_number(speed_rel_m_s: float, altitude_m: float) -> float:
+    """Número de Mach M = ||v_rel|| / a(h) (adimensional)."""
+    return float(speed_rel_m_s) / compute_speed_of_sound(altitude_m)
+
+
+def compute_drag_coefficient(mach: float) -> float:
+    """Coeficiente de arrastre Cd(M) por interpolación lineal en la tabla representativa.
+
+    Fuera del rango tabulado se mantiene constante el valor del extremo correspondiente.
+    """
+    return float(np.interp(mach, _CD_MACH_TABLE[0], _CD_MACH_TABLE[1]))
+
+
+def compute_dynamic_pressure(speed_rel_m_s: float, altitude_m: float) -> float:
+    """Presión dinámica q = 0.5 * rho(h) * ||v_rel||^2 en pascales (Pa)."""
+    return 0.5 * compute_atmospheric_density(altitude_m) * float(speed_rel_m_s) ** 2

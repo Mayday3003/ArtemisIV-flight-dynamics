@@ -23,7 +23,18 @@ from typing import Final
 import numpy as np
 import numpy.typing as npt
 
-from artemis_sim.constants import CelestialBody
+from artemis_sim.constants import EARTH, MOON, CelestialBody
+
+# Radio orbital medio de la Luna (m) y movimiento medio kepleriano autoconsistente.
+LUNAR_ORBITAL_RADIUS_M: Final[float] = 384_400_000.0
+# n = sqrt((mu_E + mu_M) / d^3): única velocidad angular compatible con una órbita circular
+# relativa Tierra-Luna bajo gravedad newtoniana (tercera ley de Kepler). Con ella el modelo
+# es exactamente el Problema Restringido Circular de Tres Cuerpos (CR3BP) y la constante de
+# Jacobi es una integral del movimiento. El movimiento medio sidéreo observado (2.6617e-6 rad/s)
+# difiere un 0.14 % por las perturbaciones solares y la excentricidad, ausentes en el modelo.
+LUNAR_MEAN_MOTION_RAD_S: Final[float] = float(
+    np.sqrt((EARTH.mu_m3_s2 + MOON.mu_m3_s2) / LUNAR_ORBITAL_RADIUS_M**3)
+)
 
 
 @dataclass(frozen=True, slots=True)
@@ -36,16 +47,16 @@ class LunarOrbitConfig:
         Semieje mayor / radio orbital medio de la Luna en metros (384,400,000.0 m).
         Fuente: NASA Moon Fact Sheet (distancia media centro a centro).
     mean_motion_rad_s : float
-        Velocidad angular media sidérea en rad/s (2.6617e-6 rad/s).
-        Fuente: Movimiento medio sidéreo de la Luna n = 2*pi / T_sidereo,
-        con T_sidereo ≈ 27.321661 días (2,360,591.5 s).
-        2*pi / 2360591.5 ≈ 2.661699e-6 rad/s ≈ 2.6617e-6 rad/s.
+        Velocidad angular media en rad/s. Por defecto el valor kepleriano autoconsistente
+        n = sqrt((mu_E + mu_M) / d^3) ≈ 2.6653e-6 rad/s (periodo ≈ 27.28 días), en lugar del
+        sidéreo observado 2.6617e-6 rad/s (27.32 días), para que el CR3BP sea dinámicamente
+        consistente (ver LUNAR_MEAN_MOTION_RAD_S).
     initial_phase_rad : float
         Fase o anomalía angular inicial de la Luna en t = 0 s (por defecto 0.0 rad, eje +X).
     """
 
-    orbital_radius_m: float = 384_400_000.0
-    mean_motion_rad_s: float = 2.6617e-6
+    orbital_radius_m: float = LUNAR_ORBITAL_RADIUS_M
+    mean_motion_rad_s: float = LUNAR_MEAN_MOTION_RAD_S
     initial_phase_rad: float = 0.0
 
     def __post_init__(self) -> None:

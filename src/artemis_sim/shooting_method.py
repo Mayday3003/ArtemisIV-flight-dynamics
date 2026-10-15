@@ -467,3 +467,65 @@ def solve_tli_shooting(
         condition_number_history=condition_history,
         message=f"Máximo de iteraciones alcanzado ({max_iter}) sin alcanzar tol_m = {tol_m} m.",
     )
+
+
+@dataclass(frozen=True, slots=True)
+class KeplerTransferGeometry:
+    """Geometría kepleriana de una transferencia desde perigeo hasta r = d en tiempo t_flight.
+
+    Parámetros
+    ----------
+    apogee_radius_m : float
+        Radio de apogeo r_a de la elipse de transferencia (m).
+    transfer_angle_rad : float
+        Anomalía verdadera nu en la que la elipse corta r = d (ángulo barrido desde el perigeo).
+    perigee_speed_m_s : float
+        Velocidad en el perigeo v_p = sqrt(mu (2/r_p - 1/a)) (m/s).
+    """
+
+    apogee_radius_m: float
+    transfer_angle_rad: float
+    perigee_speed_m_s: float
+
+
+def kepler_transfer_geometry(
+    r_perigee_m: float,
+    r_target_m: float,
+    t_flight_s: float,
+    mu: float = EARTH.mu_m3_s2,
+) -> KeplerTransferGeometry:
+    """Halla la elipse con perigeo r_p que alcanza r = r_target exactamente en t_flight.
+
+    Para una elipse (r_p, r_a): a = (r_p + r_a)/2, e = (r_a - r_p)/(r_a + r_p).
+    La anomalía excéntrica en r = d es E = arccos((1 - d/a)/e) y, por la ecuación de Kepler,
+    el tiempo desde el perigeo es t(E) = sqrt(a^3/mu) (E - e sin E). Se resuelve
+    t(E(r_a)) = t_flight en r_a (ecuación escalar monótona) con el método de Brent.
+    La anomalía verdadera nu = 2 arctan(sqrt((1+e)/(1-e)) tan(E/2)) fija la fase del
+    encendido respecto a la posición de llegada.
+    """
+    from scipy.optimize import brentq
+
+    if r_target_m <= r_perigee_m:
+        raise ValueError("r_target_m debe ser mayor que r_perigee_m.")
+
+    def _tof(r_a: float) -> float:
+        a = 0.5 * (r_perigee_m + r_a)
+        e = (r_a - r_perigee_m) / (r_a + r_perigee_m)
+        cos_e = np.clip((1.0 - r_target_m / a) / e, -1.0, 1.0)
+        ecc_anom = float(np.arccos(cos_e))
+        return float(np.sqrt(a**3 / mu) * (ecc_anom - e * np.sin(ecc_anom)))
+
+    r_a_min = r_target_m * (1.0 + 1e-9)
+    r_a_max = 1.0e3 * r_target_m
+    if not (_tof(r_a_max) < t_flight_s < _tof(r_a_min)):
+        raise ValueError(
+            "t_flight fuera del rango alcanzable con una elipse de perigeo r_p "
+            f"({_tof(r_a_max):.0f} s - {_tof(r_a_min):.0f} s)."
+        )
+    r_a = float(brentq(lambda ra: _tof(ra) - t_flight_s, r_a_min, r_a_max, xtol=1.0))
+    a = 0.5 * (r_perigee_m + r_a)
+    e = (r_a - r_perigee_m) / (r_a + r_perigee_m)
+    ecc_anom = float(np.arccos(np.clip((1.0 - r_target_m / a) / e, -1.0, 1.0)))
+    nu = 2.0 * float(np.arctan(np.sqrt((1.0 + e) / (1.0 - e)) * np.tan(0.5 * ecc_anom)))
+    v_p = float(np.sqrt(mu * (2.0 / r_perigee_m - 1.0 / a)))
+    return KeplerTransferGeometry(apogee_radius_m=r_a, transfer_angle_rad=nu, perigee_speed_m_s=v_p)
