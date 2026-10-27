@@ -1,0 +1,11 @@
+{
+  "name": "artemis-iv-presentation",
+  "private": true,
+  "description": "Generador de la presentación Artemis_IV_UdeM.pptx",
+  "scripts": {
+    "build": "node build_deck.js"
+  },
+  "dependencies": {
+    "pptxgenjs": "3.12.0"
+  }
+}

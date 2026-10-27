@@ -1,7 +1,8 @@
 // Genera la presentación Artemis_IV_UdeM.pptx a partir de las figuras y resultados del proyecto.
-// Uso (desde la raíz del repo):
-//   .venv/bin/python docs/presentation/render_formulas.py
-//   NODE_PATH=<dir con pptxgenjs>/node_modules node docs/presentation/build_deck.js
+// Uso:
+//   cd docs/presentation && npm install          (una sola vez; instala pptxgenjs)
+//   ../../.venv/bin/python render_formulas.py    (solo si cambian las fórmulas)
+//   npm run build
 const path = require("path");
 const fs = require("fs");
 const pptxgen = require("pptxgenjs");
@@ -170,7 +171,7 @@ const agenda = [
   ["02", "Fase 1 · Ascenso", "Ecuaciones en ECI, empuje, aerodinámica, guiado, RK45"],
   ["03", "Fase 2 · Tránsito", "Problema de 3 cuerpos, Verlet simpléctico, Jacobi"],
   ["04", "Fase 3 · TLI", "Método del disparo y Newton-Raphson"],
-  ["05", "Cierre", "Errores corregidos, conclusiones y trabajo futuro"],
+  ["05", "Cierre", "Resultados físicos, conclusiones y trabajo futuro"],
 ];
 agenda.forEach(([n, t, d], i) => {
   const y = 1.45 + i * 1.08;
@@ -181,7 +182,7 @@ agenda.forEach(([n, t, d], i) => {
 });
 fit(s, NASA("nasa_sls_block1b"), 8.6, 1.3, 4.1, 5.4);
 credit(s, "Imagen: NASA, SLS Block 1B (render)", 8.9, 6.75, 3.6);
-s.addNotes("La charla sigue el orden de la misión: contexto, luego las tres fases que simulamos y al final la revisión crítica del código, las conclusiones y el trabajo futuro.");
+s.addNotes("La charla sigue el orden de la misión: contexto, luego las tres fases que simulamos y al final las conclusiones físicas y el trabajo futuro.");
 
 // ====================================================================== 3. Artemis
 s = content("El programa Artemis: regreso sostenible a la Luna", "Introducción");
@@ -302,10 +303,10 @@ eq(s, "eq_vrel", 7.85, 2.8, 4.5, 0.95);
 s.addText("y por la velocidad inicial ω×r₀ ≈ 408 m/s hacia el este.", { x: 7.65, y: 3.4, w: 4.9, h: 0.45, fontSize: 14, color: INK, margin: 0, isTextBox: true });
 bullets(s, [
   "Tres fuerzas: empuje T·û, arrastre D y gravedad newtoniana",
-  "El borrador mezclaba ECEF (Coriolis/centrífuga) con ECI: corregido",
+  "Lanzar hacia el este aprovecha esos 408 m/s de la rotación terrestre",
 ], 7.4, 4.25, 5.3, 1.2, 14);
 codeTag(s, ["src/artemis_sim/ascent_solver.py", "make_ascent_derivatives(config)  →  f(t, Y)", "physics_engine.py → compute_relative_velocity(), compute_gravity()"], MX, 5.75, 12.1);
-s.addNotes("Escribimos las ecuaciones en el marco geocéntrico inercial ECI. El estado tiene siete componentes: posición, velocidad y masa. La aceleración suma empuje, arrastre y gravedad. Detalle importante: en un marco inercial no hay Coriolis; la rotación de la Tierra entra por la velocidad relativa al aire y por la velocidad inicial de 408 m/s del LC-39B. El borrador original mezclaba ambos marcos y lo corregimos. Todo esto está en make_ascent_derivatives, que devuelve la función f(t, Y) que recibe solve_ivp.");
+s.addNotes("Escribimos las ecuaciones en el marco geocéntrico inercial ECI. El estado tiene siete componentes: posición, velocidad y masa. La aceleración suma empuje, arrastre y gravedad. Detalle importante: en un marco inercial no hay Coriolis; la rotación de la Tierra entra por la velocidad relativa al aire y por la velocidad inicial de 408 m/s del LC-39B. Por eso se lanza hacia el este: la rotación terrestre regala unos 408 m/s. Todo esto está en make_ascent_derivatives, que devuelve la función f(t, Y) que recibe solve_ivp.");
 
 // ====================================================================== 9. Empuje y SRB
 s = content("Empuje y conservación de masa de los SRB", "Fase 1 · Ascenso");
@@ -316,16 +317,16 @@ s.addText("Perfil regresivo de los SRB", { x: MX, y: 3.25, w: 6, h: 0.4, fontFac
 eq(s, "eq_srb", MX + 0.2, 3.72, 5.5);
 eq(s, "eq_k", MX + 0.2, 4.25, 5.6, 0.85);
 s.addShape(pres.shapes.ROUNDED_RECTANGLE, { x: 7.2, y: 1.35, w: 5.5, h: 3.7, fill: { color: "FDEBDD" }, line: { color: "FDEBDD" }, rectRadius: 0.1 });
-s.addText("Error encontrado en el código original", { x: 7.45, y: 1.5, w: 5.1, h: 0.4, fontFace: THEME.headFontFace, fontSize: 17, bold: true, color: ORANGE, margin: 0, isTextBox: true });
+s.addText("Conservación de la masa", { x: 7.45, y: 1.5, w: 5.1, h: 0.4, fontFace: THEME.headFontFace, fontSize: 17, bold: true, color: ORANGE, margin: 0, isTextBox: true });
 bullets(s, [
-  "Empuje constante de 16 MN por SRB con Isp de 268 s: el propelente se agota a los 103 s",
-  "Pero los SRB seguían encendidos hasta los 126 s",
-  "Consumían unas 280 t de masa del Core Stage",
-  [{ text: "Solución: ", bold: true }, { text: "el perfil f(t) se escala con k para que ∫ṁ dt = m_p exactamente" }],
+  "El grano de PBAN se talla para un empuje regresivo: máximo al despegue y menor cerca de Max-Q",
+  "El gasto másico sigue al empuje: ṁ(t) = T(t) / (Isp·g₀)",
+  "En 126 s los SRB queman exactamente sus 1 257 t de propelente",
+  [{ text: "Condición: ", bold: true }, { text: "∫ṁ dt = m_p fija el factor de escala k" }],
 ], 7.45, 2.0, 5.1, 3.0, 14);
-stat(s, f1(R.srb_scale, 4), "factor k: los datos públicos son coherentes", 7.2, 5.25, 5.5);
+stat(s, f1(R.srb_scale, 4), "factor k ≈ 1: los datos públicos son coherentes", 7.2, 5.25, 5.5);
 codeTag(s, ["src/artemis_sim/ascent_solver.py", "SRB_THRUST_PROFILE · srb_thrust_fraction(t, tb) · srb_thrust_scale(spec, tb)", "physics_engine.py → compute_thrust(), compute_mass_flow()"], MX, 5.6, 6.35);
-s.addNotes("El empuje real depende de la presión: T = T_vac - p_a A_e. Aquí encontramos el primer error físico: con empuje constante los SRB se quedaban sin propelente a los 103 segundos, pero el código los mantenía encendidos hasta los 126 y les restaba masa de la etapa central. Lo corregimos con un perfil de empuje regresivo, como el real, escalado con un factor k que garantiza la conservación de masa. Ese factor da 1.0033: los datos públicos son coherentes. Hay una prueba automática que integra el flujo másico y comprueba que da exactamente la masa de propelente.");
+s.addNotes("El empuje real depende de la presión: T = T_vac - p_a A_e. Los SRB no empujan de forma constante: el grano de combustible sólido se talla para dar un empuje regresivo, alto al despegue y menor cerca de Max-Q. Modelamos ese perfil y lo escalamos con un factor k que garantiza la conservación de la masa: en 126 segundos se quema exactamente el propelente de los SRB. Ese factor da 1.0033: los datos públicos son coherentes. Hay una prueba automática que integra el flujo másico y comprueba que da exactamente la masa de propelente.");
 
 // ====================================================================== 10. Atmósfera
 s = content("Atmósfera, número de Mach y arrastre", "Fase 1 · Ascenso");
@@ -375,7 +376,7 @@ bullets(s, [
   "Explícito: el ascenso no es rígido",
 ], 8.5, 3.55, 4.0, 1.7, 13.5);
 codeTag(s, ["src/artemis_sim/ascent_solver.py", "linear_tangent_direction() · make_srb_burnout_event() · make_core_burnout_event()", "jettison_boosters() · simulate_full_ascent()  →  AscentResult"], MX, 5.55, 12.1);
-s.addNotes("El guiado tiene tres tramos. En la atmósfera hacemos un giro por gravedad: el empuje sigue la velocidad relativa, con ángulo de ataque cero para minimizar las cargas. Fuera de la atmósfera usamos la ley de tangente lineal, que es la óptima para empuje en el vacío. Los dos parámetros se resolvieron con fsolve para llegar al MECO a 160 km con ángulo de trayectoria cero. El código original usaba solo el giro por gravedad y el cohete se estrellaba a los 388 segundos. La integración usa RK45 con eventos: al detectar el fin de los SRB se descarta su masa seca y se reinicia hasta el MECO.");
+s.addNotes("El guiado tiene tres tramos. En la atmósfera hacemos un giro por gravedad: el empuje sigue la velocidad relativa, con ángulo de ataque cero para minimizar las cargas. Fuera de la atmósfera usamos la ley de tangente lineal, que es la óptima para empuje en el vacío. Los dos parámetros se resolvieron con fsolve para llegar al MECO a 160 km con ángulo de trayectoria cero. El giro por gravedad puro es muy sensible al ángulo inicial; por eso, fuera de la atmósfera, se pasa a la tangente lineal. La integración usa RK45 con eventos: al detectar el fin de los SRB se descarta su masa seca y se reinicia hasta el MECO.");
 
 // ====================================================================== 12. Resultados ascenso
 s = content("Resultados del ascenso", "Fase 1 · Ascenso");
@@ -420,13 +421,13 @@ s.addText("Aceleración geocéntrica (Tierra + Luna como masas puntuales)", { x:
 eq(s, "eq_cr3bp", MX + 0.2, 1.9, 9.5);
 s.addShape(pres.shapes.ROUNDED_RECTANGLE, { x: MX, y: 3.25, w: 5.9, h: 2.1, fill: { color: TINT }, line: { color: TINT }, rectRadius: 0.1 });
 s.addText("Término indirecto", { x: MX + 0.25, y: 3.38, w: 5.4, h: 0.4, fontFace: THEME.headFontFace, fontSize: 17, bold: true, color: ORANGE, margin: 0, isTextBox: true });
-s.addText("El origen (la Tierra) también cae hacia la Luna. En coordenadas geocéntricas hay que restar esa aceleración, −μ_L r_L/|r_L|³; el borrador lo omitía.", { x: MX + 0.25, y: 3.85, w: 5.4, h: 1.4, fontSize: 14, color: INK, margin: 0, isTextBox: true });
+s.addText("El origen (la Tierra) también cae hacia la Luna. En coordenadas geocéntricas hay que restar esa aceleración, −μ_L r_L/|r_L|³ (marco no inercial).", { x: MX + 0.25, y: 3.85, w: 5.4, h: 1.4, fontSize: 14, color: INK, margin: 0, isTextBox: true });
 s.addShape(pres.shapes.ROUNDED_RECTANGLE, { x: 6.8, y: 3.25, w: 5.9, h: 2.1, fill: { color: "FDEBDD" }, line: { color: "FDEBDD" }, rectRadius: 0.1 });
 s.addText("Movimiento medio consistente", { x: 7.05, y: 3.38, w: 5.4, h: 0.4, fontFace: THEME.headFontFace, fontSize: 17, bold: true, color: ORANGE, margin: 0, isTextBox: true });
 eq(s, "eq_n", 7.15, 3.85, 5.2, 0.7);
-s.addText("El valor sidéreo de 2.6617e-6 no satisface la tercera ley de Kepler con μ_E + μ_L; con ese valor, Jacobi no se conservaba.", { x: 7.05, y: 4.6, w: 5.4, h: 0.7, fontSize: 13, color: INK, margin: 0, isTextBox: true });
+s.addText("Con n kepleriano el modelo es un CR3BP exacto y la integral de Jacobi se conserva. El valor observado (2.6617e-6) incluye la perturbación solar.", { x: 7.05, y: 4.6, w: 5.4, h: 0.7, fontSize: 13, color: INK, margin: 0, isTextBox: true });
 codeTag(s, ["src/artemis_sim/symplectic_solver.py → compute_n_body_acceleration(r, t)", "src/artemis_sim/ephemeris.py → LUNAR_MEAN_MOTION_RAD_S · get_body_position() · get_body_velocity()"], MX, 5.65, 12.1);
-s.addNotes("En el vacío solo actúan la gravedad terrestre y la lunar. Como usamos coordenadas centradas en la Tierra, y la Tierra también es atraída por la Luna, aparece el término indirecto, que el documento original omitía (el código sí lo tenía). Además corregimos la velocidad angular de la Luna: para que el modelo sea un problema restringido circular de tres cuerpos auténtico, debe cumplir la tercera ley de Kepler con las masas de ambos cuerpos.");
+s.addNotes("En el vacío solo actúan la gravedad terrestre y la lunar. Como usamos coordenadas centradas en la Tierra, y la Tierra también es atraída por la Luna, aparece el término indirecto. Además, la velocidad angular de la Luna se obtiene de la tercera ley de Kepler: para que el modelo sea un problema restringido circular de tres cuerpos auténtico, debe cumplir la tercera ley de Kepler con las masas de ambos cuerpos.");
 
 // ====================================================================== 16. Verlet
 s = content("Velocity Verlet: un integrador simpléctico", "Fase 2 · Tránsito");
@@ -466,7 +467,7 @@ bullets(s, [
 ], MX, 2.45, 5.8, 3.0, 15);
 fit(s, FIG("fig08_jacobi"), 6.7, 1.3, 6.0, 4.3);
 codeTag(s, ["src/artemis_sim/symplectic_solver.py", "compute_jacobi_constant(state) · compute_system_energy(state, t)"], MX, 5.75, 12.1);
-s.addNotes("Con la Luna presente, la energía respecto a la Tierra no es constante: cambia un 77 % en el encuentro, y eso es física, no un error. El documento original afirmaba que se conservaba. El invariante correcto es la integral de Jacobi del problema restringido. Verlet la conserva con un error relativo de 1e-5, que aparece en la primera hora cerca de la Tierra y luego se mantiene plano.");
+s.addNotes("Con la Luna presente, la energía respecto a la Tierra no es constante: cambia un 77 % en el encuentro, y eso es física, no un error. El invariante correcto es la integral de Jacobi del problema restringido. Verlet la conserva con un error relativo de 1e-5, que aparece en la primera hora cerca de la Tierra y luego se mantiene plano.");
 
 // ====================================================================== 19. Divisor Fase 3
 s = divider("03", "Fase 3 · Inyección translunar", "Problema de valores en la frontera: método del disparo", "Fase 3 · TLI");
@@ -486,11 +487,11 @@ bullets(s, [
 ], MX, 3.65, 7.4, 1.8, 14);
 s.addShape(pres.shapes.ROUNDED_RECTANGLE, { x: 8.3, y: 1.3, w: 4.4, h: 4.1, fill: { color: "FDEBDD" }, line: { color: "FDEBDD" }, rectRadius: 0.1 });
 s.addText("Semilla kepleriana", { x: 8.5, y: 1.42, w: 4, h: 0.4, fontFace: THEME.headFontFace, fontSize: 17, bold: true, color: ORANGE, margin: 0, isTextBox: true });
-s.addText("Con la semilla vis-viva el residuo inicial era de 677 000 km y Newton no convergía. Resolvemos la ecuación de Kepler:", { x: 8.5, y: 1.85, w: 4.0, h: 1.1, fontSize: 13.5, color: INK, margin: 0, isTextBox: true });
+s.addText("Newton converge solo si arranca cerca de la solución, y la Luna se mueve unos 52° en 4 días. Resolvemos la ecuación de Kepler:", { x: 8.5, y: 1.85, w: 4.0, h: 1.1, fontSize: 13.5, color: INK, margin: 0, isTextBox: true });
 eq(s, "eq_kepler", 8.6, 3.0, 3.9, 0.75);
 s.addText(`Con Brent se hallan r_a y ν = ${f1(R.tli_transfer_angle_deg)}°, que fijan el punto de encendido. Residuo inicial: ${fmtInt(R.tli_initial_residual_km)} km.`, { x: 8.5, y: 3.7, w: 4.0, h: 1.4, fontSize: 13.5, color: INK, margin: 0, isTextBox: true });
 codeTag(s, ["src/artemis_sim/shooting_method.py", "solve_tli_shooting() · shooting_residual() · numerical_jacobian()", "kepler_transfer_geometry() · moon_relative_target() · make_dop853_propagator()"], MX, 5.6, 12.1);
-s.addNotes("La TLI es un problema de valores en la frontera: conocemos dónde empezamos y dónde queremos estar en 4 días, pero no la velocidad inicial. Lo resolvemos con el método del disparo: F(Δv) es el error de posición al llegar, y con Newton y un jacobiano por diferencias centrales iteramos hasta anularlo. Newton solo converge si arrancamos cerca, y la semilla original estaba a 677 000 km del objetivo. La mejoramos resolviendo la ecuación de Kepler, que nos dice dónde encender para que el apogeo coincida con la Luna. Así el residuo inicial cae a 24 000 km, causado solo por la gravedad lunar.");
+s.addNotes("La TLI es un problema de valores en la frontera: conocemos dónde empezamos y dónde queremos estar en 4 días, pero no la velocidad inicial. Lo resolvemos con el método del disparo: F(Δv) es el error de posición al llegar, y con Newton y un jacobiano por diferencias centrales iteramos hasta anularlo. Newton solo converge si arrancamos cerca, así que la semilla se obtiene resolviendo la ecuación de Kepler, que nos dice dónde encender para que el apogeo coincida con la Luna. Así el residuo inicial cae a 24 000 km, causado solo por la gravedad lunar.");
 
 // ====================================================================== 21. Resultado TLI
 s = content("Resultado de la TLI", "Fase 3 · TLI");
@@ -505,42 +506,35 @@ bullets(s, [
 ], 8.85, 4.3, 3.85, 2.5, 14);
 s.addNotes("Newton converge en 5 iteraciones a un Δv de 3 150 m/s, justo el valor clásico de una TLI. En la gráfica se ve la convergencia cuadrática al final. En el marco rotante, a la derecha, la Luna queda fija y se aprecia la forma de la transferencia. Al repropagar con Verlet, la nave llega a 4 001 km de altitud, prácticamente el objetivo de 4 000 km.");
 
-// ====================================================================== 22. Revisión crítica
+// ====================================================================== 22. Conclusiones (resultados físicos)
 pres.addSection({ title: "Cierre" });
-s = content("Revisión crítica: errores encontrados y corregidos", "Cierre");
-const fixes = [
-  ["Masa de los SRB", "Agotados a 103 s, encendidos hasta 126 s", "Perfil f(t) con k = 1.0033"],
-  ["Trayectoria de ascenso", "El cohete se estrellaba a los 388 s", "Guiado de tangente lineal → MECO a 160 km"],
-  ["Eventos", "Constantes fijas (126 s, 180 t)", "Fábricas basadas en AscentConfig"],
-  ["Movimiento medio lunar", "Inconsistente con μ_E + μ_L", "n = √((μ_E+μ_L)/d³)"],
-  ["Diagnóstico energético", "Energía geocéntrica no conservada", "Integral de Jacobi"],
-  ["Targeting TLI", "No convergía (677 000 km)", "Semilla de Kepler: 5 iteraciones"],
-  ["Documento", "ECI/ECEF mezclados; RK45 'rígido'", "Formulación corregida"],
+s = content("Conclusiones: lo que nos dice la física", "Cierre");
+const concl = [
+  ["Realismo", "El simulador reproduce el vuelo real", "El ascenso y el viaje a la Luna dan valores del mismo orden que los del SLS y las misiones lunares."],
+  ["Métodos", "Cada fase necesita su propio método", "La atmósfera pide un método adaptativo (RK45); el vacío, uno que respete la energía (Verlet)."],
+  ["Energía", "Para viajes largos, el método simpléctico gana", "Su error de energía no crece con el tiempo, mientras que el de RK4 se acumula."],
+  ["Misión", "Llegar a la Luna es factible", "La etapa EUS tiene combustible suficiente para entrar en órbita y luego impulsar la nave hacia la Luna."],
 ];
-s.addTable([["Aspecto", "Problema", "Corrección"], ...fixes].map((r, i) => r.map((c, j) => ({ text: c, options: { bold: i === 0 || j === 0, fontSize: 13.5, color: i === 0 ? "FFFFFF" : j === 2 ? "137A55" : j === 1 ? "B54A1C" : NAVY, fill: { color: i === 0 ? NAVY : i % 2 ? "FFFFFF" : TINT } } }))), { x: MX, y: 1.35, w: 12.1, colW: [3.0, 4.6, 4.5], rowH: 0.52, border: { type: "solid", pt: 0.5, color: "D5DAE1" }, valign: "middle", margin: 0.08 });
-s.addText("Cada corrección tiene una prueba automática en tests/test_physics_corrections.py", { x: MX, y: 5.75, w: 11, h: 0.4, fontSize: 14, italic: true, color: MUTED, margin: 0, isTextBox: true });
-s.addNotes("Esta es la revisión crítica que hicimos antes de presentar resultados. Encontramos siete problemas: los SRB que violaban la conservación de masa, una trayectoria que se estrellaba, eventos con constantes fijas, una velocidad lunar inconsistente, un diagnóstico de energía que no era un invariante, un targeting que no convergía y errores de formulación en el documento. Cada uno tiene ahora una prueba automática que lo protege.");
-
-// ====================================================================== 23. Conclusiones
-s = content("Conclusiones y trabajo futuro", "Cierre");
-s.addText("Conclusiones", { x: MX, y: 1.3, w: 6, h: 0.45, fontFace: THEME.headFontFace, fontSize: 20, bold: true, color: ORANGE, margin: 0, isTextBox: true });
-bullets(s, [
-  "Simulador modular y verificado de 3 fases de Artemis IV",
-  "Resultados coherentes con el SLS: Max-Q de 27.5 kPa, TLI de 3.15 km/s",
-  "Integrador simpléctico: error acotado frente a la deriva de RK4",
-  "Con la Luna, el invariante es Jacobi y no la energía",
-  "Una buena semilla (Kepler) es decisiva para Newton",
-], MX, 1.9, 6.0, 4.2, 15);
-s.addShape(pres.shapes.ROUNDED_RECTANGLE, { x: 7.0, y: 1.3, w: 5.7, h: 4.2, fill: { color: TINT }, line: { color: TINT }, rectRadius: 0.1 });
-s.addText("Trabajo futuro", { x: 7.25, y: 1.45, w: 5.2, h: 0.45, fontFace: THEME.headFontFace, fontSize: 20, bold: true, color: NAVY, margin: 0, isTextBox: true });
-bullets(s, [
-  [{ text: "NRHO: ", bold: true }, { text: "órbitas de halo L2 sur por corrección diferencial" }],
-  [{ text: "Descenso HLS: ", bold: true }, { text: "armónicos esféricos GRGM1200A (mascons de GRAIL)" }],
-  [{ text: "Efemérides: ", bold: true }, { text: "JPL DE440, Sol, J₂ y presión de radiación" }],
-  [{ text: "Combustiones finitas ", bold: true }, { text: "de la EUS y optimización del ascenso" }],
-  [{ text: "Visualización 3D ", bold: true }, { text: "con Three.js (frontend del repositorio)" }],
-], 7.25, 2.0, 5.2, 4.0, 14.5);
-s.addNotes("En conclusión: tenemos un simulador verificado, con resultados coherentes con el vehículo real, que demuestra con datos por qué cada régimen requiere su integrador. Como trabajo futuro quedan la órbita NRHO de Gateway, el descenso con el campo gravitatorio lunar real de GRAIL y efemérides de alta fidelidad.");
+concl.forEach(([tag, head, txt], i) => {
+  const y = 1.35 + i * 1.22;
+  s.addShape(pres.shapes.ROUNDED_RECTANGLE, { x: MX, y, w: 1.9, h: 1.0, fill: { color: i % 2 ? TINT : "FDEBDD" }, line: { color: i % 2 ? TINT : "FDEBDD" }, rectRadius: 0.08 });
+  s.addText(tag, { x: MX, y, w: 1.9, h: 1.0, fontFace: THEME.headFontFace, fontSize: 17, bold: true, color: i % 2 ? NAVY : ORANGE, align: "center", valign: "middle", margin: 0, isTextBox: true });
+  s.addText(head, { x: MX + 2.15, y: y + 0.02, w: 5.6, h: 0.42, fontSize: 17, bold: true, color: NAVY, margin: 0, isTextBox: true });
+  s.addText(txt, { x: MX + 2.15, y: y + 0.44, w: 5.6, h: 0.56, fontSize: 14, color: INK, valign: "top", margin: 0, isTextBox: true });
+});
+s.addShape(pres.shapes.ROUNDED_RECTANGLE, { x: 8.55, y: 1.3, w: 4.15, h: 4.95, fill: { color: NAVY }, line: { color: NAVY }, rectRadius: 0.1 });
+s.addText("Trabajo futuro", { x: 8.8, y: 1.45, w: 3.7, h: 0.45, fontFace: THEME.headFontFace, fontSize: 20, bold: true, color: ORANGE, margin: 0, isTextBox: true });
+s.addText([
+  { text: "NRHO de Gateway", options: { bold: true, color: "FFFFFF", breakLine: true } },
+  { text: "Órbitas de halo L2 por corrección diferencial", options: { color: "CADCFC", breakLine: true } },
+  { text: "Descenso del HLS", options: { bold: true, color: "FFFFFF", breakLine: true } },
+  { text: "Gravedad lunar con mascons (GRAIL)", options: { color: "CADCFC", breakLine: true } },
+  { text: "Mayor fidelidad", options: { bold: true, color: "FFFFFF", breakLine: true } },
+  { text: "Efemérides DE440, Sol, J₂, combustiones finitas", options: { color: "CADCFC", breakLine: true } },
+  { text: "Visualización 3D", options: { bold: true, color: "FFFFFF", breakLine: true } },
+  { text: "Trayectorias en Three.js", options: { color: "CADCFC" } },
+], { x: 8.8, y: 2.05, w: 3.7, h: 4.05, fontSize: 15, valign: "top", margin: 0, paraSpaceAfter: 9, isTextBox: true });
+s.addNotes("Para cerrar, cuatro ideas. Primero, el simulador reproduce el vuelo real: los resultados del ascenso y del viaje a la Luna son del mismo orden que los de la misión real. Segundo, no existe un único método para todo: la atmósfera requiere un método adaptativo y el vacío uno que respete la energía. Tercero, para viajes largos el método simpléctico es mejor, porque su error de energía no crece con el tiempo. Y cuarto, la misión es factible: la etapa EUS tiene combustible suficiente para entrar en órbita y llegar a la Luna. Como trabajo futuro quedan la órbita de Gateway, el descenso a la superficie lunar y modelos más realistas.");
 
 // ====================================================================== 24. Cierre
 s = pres.addSlide({ masterName: "DARK", sectionTitle: "Cierre" });
@@ -560,7 +554,11 @@ s.addNotes("Gracias. Quedamos atentos a sus preguntas. Si quiere, podemos abrir 
 // ---------------------------------------------------------------- write + theme
 (async () => {
   await pres.writeFile({ fileName: OUT });
-  const { applyTheme } = require(process.env.PPTX_SKILL + "/scripts/apply_theme.js");
-  await applyTheme(OUT, THEME);
+  // Opcional: escribe los colores de THEME en el tema del .pptx (solo cambia la paleta que
+  // PowerPoint ofrece al editar; las diapositivas ya usan colores explícitos).
+  if (process.env.PPTX_SKILL) {
+    const { applyTheme } = require(process.env.PPTX_SKILL + "/scripts/apply_theme.js");
+    await applyTheme(OUT, THEME);
+  }
   console.log("OK ->", OUT);
 })();

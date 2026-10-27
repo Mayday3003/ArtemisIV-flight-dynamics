@@ -196,7 +196,7 @@ def linear_tangent_direction(
         h_unit = v_horiz / h_norm
         tau = min(1.0, max(0.0, (t - t_guidance) / (t_final - t_guidance)))
         theta = float(np.arctan(tan_0 + (tan_f - tan_0) * tau))
-        return np.cos(theta) * h_unit + np.sin(theta) * r_unit
+        return np.asarray(np.cos(theta) * h_unit + np.sin(theta) * r_unit, dtype=np.float64)
 
     return _direction_func
 

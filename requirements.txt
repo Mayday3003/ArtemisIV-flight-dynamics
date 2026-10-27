@@ -1,0 +1,10 @@
+# Instalación: pip install -r requirements.txt
+# Núcleo del simulador
+numpy>=1.24
+scipy>=1.10
+# Figuras (scripts/generate_figures.py)
+matplotlib>=3.7
+# Pruebas y calidad de código
+pytest>=7.0
+ruff>=0.1
+mypy>=1.0
