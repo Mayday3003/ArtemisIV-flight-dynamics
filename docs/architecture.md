@@ -40,6 +40,8 @@ flowchart TB
 | `ascent_solver.py` | EDO del ascenso, guiado, eventos y simulación completa | `make_ascent_derivatives`, `linear_tangent_direction`, `simulate_full_ascent` |
 | `symplectic_solver.py` | CR3BP geocéntrico e integradores | `compute_n_body_acceleration`, `propagate_verlet`, `propagate_rk4`, `compute_jacobi_constant` |
 | `shooting_method.py` | Problema de valores en la frontera de la TLI | `solve_tli_shooting`, `numerical_jacobian`, `kepler_transfer_geometry` |
+| `mission.py` | Encadena las Fases 1–3 (ascenso → aparcamiento → TLI → tránsito) con la ventana de lanzamiento | `build_mission_phases_1_to_3` |
+| `export.py` | Remuestreo con Hermite cúbico y exportación a JSON por columnas para la web | `MissionTrajectory`, `resample`, `to_json`, `from_json` |
 
 ## Flujo de un cálculo completo
 
@@ -70,4 +72,4 @@ sequenceDiagram
 
 ## Dónde crecerá
 
-Ver [ROADMAP.md](ROADMAP.md): `export.py` (trayectoria → JSON para la web), `cr3bp.py` y `periodic_orbits.py` (NRHO), `nrho_transfer.py` (Fase 4), `lunar_gravity.py` y `descent_solver.py` (Fase 5), y `pipeline.py` (misión completa).
+Ver [ROADMAP.md](ROADMAP.md): `cr3bp.py` y `periodic_orbits.py` (NRHO), `nrho_transfer.py` (Fase 4), `lunar_gravity.py` y `descent_solver.py` (Fase 5), y `pipeline.py` (misión completa).

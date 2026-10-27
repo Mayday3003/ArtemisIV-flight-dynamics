@@ -440,14 +440,15 @@ def compute_jacobi_constant(
 
     Con la Luna en órbita circular de movimiento medio n, el sistema geocéntrico con término
     indirecto es equivalente al Problema Restringido Circular de Tres Cuerpos. En el marco
-    baricéntrico que rota con velocidad angular omega = n z, el hamiltoniano es autónomo y
-        E_J = 0.5 |v_rot|^2 - 0.5 n^2 (x_b^2 + y_b^2) - mu_E / r_1 - mu_M / r_2
+    baricéntrico que rota con velocidad angular omega = n h (h: normal al plano orbital lunar;
+    h = z si la órbita es ecuatorial), el hamiltoniano es autónomo y
+        E_J = 0.5 |v_rot|^2 - 0.5 |omega x rho|^2 - mu_E / r_1 - mu_M / r_2
     es una constante exacta del movimiento (C_J = -2 E_J es la constante de Jacobi clásica).
 
     Transformación desde el estado geocéntrico inercial (r, v):
     - Baricentro: R_b = mu_M / (mu_E + mu_M) * r_M(t),  V_b = mu_M / (mu_E + mu_M) * v_M(t).
     - rho = r - R_b,  rho_dot = v - V_b  (inercial baricéntrico).
-    - v_rot = rho_dot - omega x rho;  |omega x rho|^2 = n^2 (x_b^2 + y_b^2).
+    - v_rot = rho_dot - omega x rho. Para órbita ecuatorial |omega x rho|^2 = n^2 (x_b^2 + y_b^2).
 
     La conservación es exacta solo si n = sqrt((mu_E + mu_M) / d^3), que es el valor por
     defecto de `LunarOrbitConfig`.
@@ -466,14 +467,16 @@ def compute_jacobi_constant(
 
     rho = state.position - frac * r_moon
     rho_dot = state.velocity - frac * v_moon
-    omega = np.array([0.0, 0.0, n], dtype=np.float64)
-    v_rot = rho_dot - np.cross(omega, rho)
+    _, _, h_unit = lunar_config.plane_basis()
+    omega = n * h_unit
+    omega_x_rho = np.cross(omega, rho)
+    v_rot = rho_dot - omega_x_rho
 
     r1 = float(np.linalg.norm(state.position))
     r2 = float(np.linalg.norm(state.position - r_moon))
     return float(
         0.5 * np.dot(v_rot, v_rot)
-        - 0.5 * n**2 * (rho[0] ** 2 + rho[1] ** 2)
+        - 0.5 * np.dot(omega_x_rho, omega_x_rho)
         - mu_e / r1
         - mu_m / r2
     )

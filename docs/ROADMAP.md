@@ -96,6 +96,7 @@
 | TLI impulsiva | Ignora unos 20 min de combustión y las pérdidas por gravedad | **Combustión finita** de la EUS (integrar empuje + masa) | `symplectic_solver.py` / nuevo `burns.py` |
 | Tierra esférica | Sin achatamiento: la precesión nodal de la órbita LEO se pierde | Término **J₂** | `physics_engine.py` |
 | Sin perturbación solar | Error de algunos km en 4 días | Sol como 4.º cuerpo (con DE440) | `symplectic_solver.py` |
+| Guiado en vacío orientado con `v_rel` | La inclinación deriva de 28,6° a 31,7° durante el ascenso (rumbo de 90° a 109°): el empuje sigue el "este local" en lugar de mantener el plano inercial | En `linear_tangent_direction`, usar la velocidad **inercial** (`v_rel + ω×r`) fuera de la atmósfera y volver a ajustar θ₀ y θ_f. Cambia los números del MECO, así que hay que regenerar el informe | `ascent_solver.py` |
 | RS-25 sin estrangulamiento | 3,5 g en el MECO; el real limita a ~3 g | Throttle por límite de aceleración y en Max-Q | `ascent_solver.py` |
 | Atmósfera exponencial para la densidad | Error de ~20 % sobre 30 km | Densidad US76 completa por capas (ya tenemos la temperatura) | `physics_engine.py` |
 | Datos de la EUS "pendientes de verificar" | El programa Artemis se está reestructurando | Revisar contra fuentes de la NASA y documentar la fecha de consulta | `constants.py` |
@@ -188,7 +189,7 @@ Etapa 6  Integración final ┘  + mejoras de fidelidad (P1)
 
 ---
 
-### Etapa 1: Exportación de trayectorias (puente Python → web)
+### Etapa 1: Exportación de trayectorias (puente Python → web) ✅ (terminada el 2026-10-27)
 **Objetivo:** que Python escriba un archivo con la trayectoria que el navegador pueda leer.
 **Tiempo estimado:** 3 a 4 días.
 
@@ -233,21 +234,25 @@ Archivo `frontend/data/mission.json`:
 - **La Luna no se exporta punto por punto:** se envían `mean_motion` y `phase0`, y el navegador la calcula con la misma fórmula. Cuando usemos DE440 (Etapa 6), se exportará tabulada.
 
 **Tareas:**
-- [ ] Crear `src/artemis_sim/export.py` con:
+- [x] Crear `src/artemis_sim/export.py` con:
   - `MissionTrajectory` (dataclass): fases, eventos y arrays.
   - `concatenate_phases(...)`: une tramos y quita duplicados en los cortes.
   - `resample(traj, dt_by_phase)`: muestreo por fase, con interpolación Hermite cúbica que usa posición y velocidad.
   - `to_json(traj, path)`.
-- [ ] Crear `scripts/export_mission.py`, que corre ascenso → aparcamiento → TLI → tránsito y escribe `frontend/data/mission.json`.
-- [ ] **Puente ascenso → TLI:** hoy la TLI arranca de una órbita circular ecuatorial "ideal". Hay que tomar el estado del MECO, aplicar la inserción de la EUS (impulsiva al principio) y propagar la órbita de aparcamiento hasta el punto de encendido de la TLI.
+- [x] Crear `scripts/export_mission.py`, que corre ascenso → aparcamiento → TLI → tránsito y escribe `frontend/data/mission.json`.
+- [x] **Puente ascenso → TLI** (en `src/artemis_sim/mission.py`): hoy la TLI arranca de una órbita circular ecuatorial "ideal". Hay que tomar el estado del MECO, aplicar la inserción de la EUS (impulsiva al principio) y propagar la órbita de aparcamiento hasta el punto de encendido de la TLI.
 
 **Pruebas (`tests/test_export.py`):**
-- [ ] El JSON se puede releer, y `t` es estrictamente creciente.
-- [ ] Ida y vuelta: exportar → importar → error de posición < 1 m en los puntos originales.
-- [ ] La interpolación Hermite reproduce una órbita circular con error < 10 m a mitad de intervalo.
-- [ ] Las fases cubren `[0, t_final]` sin huecos ni solapamientos.
+- [x] El JSON se puede releer, y `t` es estrictamente creciente.
+- [x] Ida y vuelta: exportar → importar → error de posición < 1 m en los puntos originales.
+- [x] La interpolación Hermite reproduce una órbita circular con error < 10 m a mitad de intervalo.
+- [x] Las fases cubren `[0, t_final]` sin huecos ni solapamientos.
 
 **Terminado cuando:** `python scripts/export_mission.py` genera `mission.json` < 5 MB que pasa las pruebas.
+
+**Resultado obtenido:** `mission.json` de 0,57 MB con 6 637 muestras (ascenso cada 1 s, aparcamiento cada 20 s, tránsito cada 60 s). La misión encadenada da inserción de 1 211 m/s, TLI de 3 147 m/s en 5 iteraciones y llegada a 3 998 km de la Luna (objetivo: 4 000 km). Masa: 2 710 t → 136,7 t tras la inserción → 66,8 t tras la TLI. Se agregaron 12 pruebas (`tests/test_export.py`), 75 en total.
+
+**Decisión de diseño, la ventana de lanzamiento:** desde Florida la órbita de aparcamiento queda inclinada. Para no pagar un cambio de plano, `LunarOrbitConfig` acepta ahora inclinación y nodo ascendente, y la misión elige la geometría lunar para que la Luna esté en el plano de aparcamiento y en el lugar correcto al llegar. Así se planifica una ventana real. La integral de Jacobi se generalizó a un plano lunar inclinado y tiene su prueba.
 
 ---
 
@@ -559,4 +564,5 @@ Estimación para unas 10 a 12 semanas a ritmo de proyecto de curso:
 | 2026-10-16 | — | Presentación final y sustentación | Equipo |
 | 2026-10-27 | — | Creación de esta hoja de ruta | Equipo |
 | 2026-10-27 | 0 | Limpieza: archivos vacíos eliminados, `requirements.txt`, README, `architecture.md`, CI, mypy sin errores, generador de la presentación reproducible (`npm run build`) | Equipo |
+| 2026-10-27 | 1 | Exportación a JSON por columnas (`export.py`), misión encadenada ascenso → aparcamiento → TLI → tránsito (`mission.py`), órbita lunar inclinada y Jacobi generalizado, 12 pruebas nuevas | Equipo |
 | | | | |

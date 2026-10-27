@@ -52,12 +52,21 @@ class LunarOrbitConfig:
         sidéreo observado 2.6617e-6 rad/s (27.32 días), para que el CR3BP sea dinámicamente
         consistente (ver LUNAR_MEAN_MOTION_RAD_S).
     initial_phase_rad : float
-        Fase o anomalía angular inicial de la Luna en t = 0 s (por defecto 0.0 rad, eje +X).
+        Argumento de latitud de la Luna en t = 0 s, medido desde el nodo ascendente
+        (por defecto 0.0 rad, eje +X cuando la órbita es ecuatorial).
+    inclination_rad : float
+        Inclinación del plano orbital lunar respecto al ecuador terrestre (por defecto 0).
+        La órbita real oscila entre 18.3° y 28.6° respecto al ecuador; un valor no nulo permite
+        alinear la Luna con el plano de la órbita de aparcamiento (ventana de lanzamiento).
+    raan_rad : float
+        Ascensión recta del nodo ascendente Ω del plano orbital lunar (por defecto 0).
     """
 
     orbital_radius_m: float = LUNAR_ORBITAL_RADIUS_M
     mean_motion_rad_s: float = LUNAR_MEAN_MOTION_RAD_S
     initial_phase_rad: float = 0.0
+    inclination_rad: float = 0.0
+    raan_rad: float = 0.0
 
     def __post_init__(self) -> None:
         """Valida valores físicos positivos."""
@@ -69,6 +78,29 @@ class LunarOrbitConfig:
             raise ValueError(
                 f"La velocidad angular debe ser positiva (> 0). Valor: {self.mean_motion_rad_s}"
             )
+        if not 0.0 <= self.inclination_rad <= np.pi:
+            raise ValueError(
+                f"La inclinación debe estar en [0, pi] rad. Valor recibido: {self.inclination_rad}"
+            )
+
+    def plane_basis(
+        self,
+    ) -> tuple[npt.NDArray[np.float64], npt.NDArray[np.float64], npt.NDArray[np.float64]]:
+        """Base ortonormal (p, q, h) del plano orbital lunar en ECI.
+
+        p apunta al nodo ascendente, q completa el plano (90° adelante en el sentido del
+        movimiento) y h = p × q es la normal (dirección del momento angular orbital):
+            p = (cos Ω, sin Ω, 0)
+            q = (−sin Ω cos i, cos Ω cos i, sin i)
+            h = (sin Ω sin i, −cos Ω sin i, cos i)
+        Con i = Ω = 0 se recupera la base canónica (x, y, z).
+        """
+        ci, si = np.cos(self.inclination_rad), np.sin(self.inclination_rad)
+        co, so = np.cos(self.raan_rad), np.sin(self.raan_rad)
+        p = np.array([co, so, 0.0], dtype=np.float64)
+        q = np.array([-so * ci, co * ci, si], dtype=np.float64)
+        h = np.array([so * si, -co * si, ci], dtype=np.float64)
+        return p, q, h
 
 
 DEFAULT_LUNAR_CONFIG: Final[LunarOrbitConfig] = LunarOrbitConfig()
@@ -101,7 +133,8 @@ def get_body_position(
     if b_name == "moon":
         theta = config.mean_motion_rad_s * t + config.initial_phase_rad
         d = config.orbital_radius_m
-        return np.array([d * np.cos(theta), d * np.sin(theta), 0.0], dtype=np.float64)
+        p, q, _ = config.plane_basis()
+        return np.asarray(d * (np.cos(theta) * p + np.sin(theta) * q), dtype=np.float64)
 
     raise ValueError(
         f"Cuerpo celeste desconocido: '{body.name}'. Se soporta únicamente 'Earth' y 'Moon'."
@@ -115,10 +148,8 @@ def get_body_velocity(
 ) -> npt.NDArray[np.float64]:
     """Calcula la velocidad geocéntrica [vx, vy, vz] del cuerpo celeste en el instante t en ECI.
 
-    Derivada analítica temporal exacta de la posición:
-    vx = -d * w * sin(w * t + phi0)
-    vy =  d * w * cos(w * t + phi0)
-    vz =  0.0
+    Derivada analítica temporal exacta de la posición r = d (cos θ p + sin θ q):
+    v = d w (−sin θ p + cos θ q),  con θ = w t + phi0 y (p, q) la base del plano orbital.
 
     Parámetros
     ----------
@@ -141,7 +172,8 @@ def get_body_velocity(
         w = config.mean_motion_rad_s
         d = config.orbital_radius_m
         theta = w * t + config.initial_phase_rad
-        return np.array([-d * w * np.sin(theta), d * w * np.cos(theta), 0.0], dtype=np.float64)
+        p, q, _ = config.plane_basis()
+        return np.asarray(d * w * (-np.sin(theta) * p + np.cos(theta) * q), dtype=np.float64)
 
     raise ValueError(
         f"Cuerpo celeste desconocido: '{body.name}'. Se soporta únicamente 'Earth' y 'Moon'."

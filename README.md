@@ -31,8 +31,9 @@ pip install -r requirements.txt
 
 | Tarea | Comando | Resultado |
 |---|---|---|
-| Correr las pruebas | `python -m pytest` | 63 pruebas en ~15 s |
+| Correr las pruebas | `python -m pytest` | 75 pruebas en ~30 s |
 | Generar figuras y resultados | `python scripts/generate_figures.py` | `docs/figures/*.png`, `docs/paper/final/figures/*.pdf`, `results.json`, `results.tex` |
+| Exportar la misión para la web | `python scripts/export_mission.py` | `frontend/data/mission.json` (Fases 1–3, ~0,6 MB) |
 | Compilar el informe | `cd docs/paper/final && pdflatex main.tex && pdflatex main.tex` | `main.pdf` |
 | Regenerar la presentación | `cd docs/presentation && npm install && npm run build` | `Artemis_IV_UdeM.pptx` |
 | Revisar estilo y tipos | `ruff check src tests scripts && mypy src` | Sin errores |
@@ -68,9 +69,10 @@ print(f"Error relativo de energía tras una órbita: {abs(e1 / e0 - 1):.1e}")
 ```text
 ArtemisIV-flight-dynamics/
 ├── src/artemis_sim/        # Paquete del simulador (ver docs/architecture.md)
-├── tests/                  # 63 pruebas automáticas (pytest)
+├── tests/                  # 75 pruebas automáticas (pytest)
 ├── scripts/
-│   └── generate_figures.py # Figuras y números del informe
+│   ├── generate_figures.py # Figuras y números del informe
+│   └── export_mission.py   # Trayectoria de la misión → frontend/data/mission.json
 ├── docs/
 │   ├── ROADMAP.md          # Hoja de ruta: mejoras, Fases 4–5 y visualización 3D
 │   ├── architecture.md     # Arquitectura y decisiones de diseño
