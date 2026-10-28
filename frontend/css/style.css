@@ -1,0 +1,164 @@
+:root {
+  --bg: #02040a;
+  --panel: rgba(11, 29, 58, 0.78);
+  --border: rgba(255, 255, 255, 0.12);
+  --text: #e6ecf5;
+  --muted: #9fb0c8;
+  --accent: #e8702a;
+  font-family: "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
+  color: var(--text);
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  height: 100%;
+  overflow: hidden;
+  background: var(--bg);
+}
+
+#viewport { position: fixed; inset: 0; }
+#viewport canvas { display: block; }
+
+.panel {
+  position: fixed;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 10px 14px;
+  backdrop-filter: blur(6px);
+  font-size: 13px;
+}
+
+#title { top: 12px; left: 12px; max-width: 360px; }
+#title h1 { margin: 0; font-size: 18px; letter-spacing: 0.04em; }
+#title p { margin: 2px 0 0; color: var(--muted); font-size: 12px; }
+
+#hud { top: 100px; left: 12px; min-width: 230px; }
+#hud .met { font: 600 20px/1.2 ui-monospace, "JetBrains Mono", monospace; }
+#hud .phase { color: var(--accent); font-weight: 600; margin: 2px 0 8px; }
+#hud dl { display: grid; grid-template-columns: auto auto; gap: 3px 12px; margin: 0; }
+#hud dt { color: var(--muted); }
+#hud dd { margin: 0; text-align: right; font-variant-numeric: tabular-nums; }
+
+#controls { top: 12px; right: 12px; display: flex; flex-direction: column; gap: 8px; width: 220px; }
+#controls label { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+#controls fieldset { border: 1px solid var(--border); border-radius: 8px; margin: 0; padding: 6px 10px; }
+#controls fieldset label { justify-content: flex-start; }
+#controls legend { color: var(--muted); padding: 0 4px; }
+
+select, button {
+  font: inherit;
+  color: var(--text);
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 4px 8px;
+  cursor: pointer;
+}
+select option { background: #0b1d3a; }
+button:hover, select:hover { background: rgba(255, 255, 255, 0.16); }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+#timeline {
+  left: 12px;
+  right: 12px;
+  bottom: 12px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+#play { width: 40px; height: 32px; font-size: 14px; }
+#track-wrap { position: relative; flex: 1; height: 36px; }
+#track { position: absolute; inset: 0 0 auto 0; height: 14px; border-radius: 4px; overflow: visible; }
+.phase-band {
+  position: absolute;
+  top: 0;
+  height: 14px;
+  opacity: 0.55;
+  font-size: 10px;
+  line-height: 14px;
+  padding-left: 4px;
+  color: #02040a;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+}
+.event-tick {
+  position: absolute;
+  top: -4px;
+  width: 4px;
+  height: 22px;
+  margin-left: -2px;
+  padding: 0;
+  border: none;
+  border-radius: 2px;
+  background: #fff;
+  z-index: 2;
+}
+#slider { position: absolute; left: 0; right: 0; bottom: 0; width: 100%; margin: 0; accent-color: var(--accent); }
+
+#toast {
+  position: fixed;
+  left: 50%;
+  bottom: 84px;
+  transform: translateX(-50%);
+  background: var(--accent);
+  color: #fff;
+  font-weight: 600;
+  padding: 8px 16px;
+  border-radius: 20px;
+  opacity: 0;
+  transition: opacity 0.3s;
+  pointer-events: none;
+}
+#toast.show { opacity: 1; }
+
+#loading {
+  position: fixed;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  font-size: 16px;
+  color: var(--muted);
+  padding: 16px;
+  text-align: center;
+}
+#loading.error { color: #ff8a80; }
+
+dialog {
+  max-width: min(640px, calc(100vw - 32px));
+  background: #0b1d3a;
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 18px 22px;
+}
+dialog::backdrop { background: rgba(0, 0, 0, 0.6); }
+dialog h2 { margin-top: 0; }
+dialog td { padding: 3px 10px 3px 0; vertical-align: top; }
+dialog .note { color: var(--muted); font-size: 12px; }
+kbd {
+  font: 12px ui-monospace, monospace;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 1px 5px;
+  background: rgba(255, 255, 255, 0.08);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  #toast { transition: none; }
+}
+
+/* Celular: paneles compactos */
+@media (max-width: 700px) {
+  .panel { font-size: 12px; padding: 8px 10px; }
+  #title { display: none; }
+  #hud { top: 8px; left: 8px; min-width: 0; }
+  #hud .met { font-size: 15px; }
+  #controls { top: auto; bottom: 64px; right: 8px; width: 180px; }
+  #controls fieldset { display: none; }
+  #timeline { left: 8px; right: 8px; bottom: 8px; gap: 8px; }
+  .phase-band { font-size: 0; }
+}

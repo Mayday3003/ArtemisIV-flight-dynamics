@@ -11,7 +11,7 @@ Autores: Mariana Lopera Correa, Juan José Becerra Bedoya y Daniel Santiago Mach
 | 2 · Tránsito Tierra–Luna | Problema restringido de tres cuerpos | Velocity Verlet (simpléctico) | Integral de Jacobi conservada a ~1e-5 |
 | 3 · TLI | Problema de valores en la frontera | Método del disparo + Newton-Raphson | Δv = 3 150 m/s en 5 iteraciones |
 
-Las fases 4 (inserción en la NRHO de Gateway) y 5 (descenso lunar), junto con la visualización 3D, están planificadas en [docs/ROADMAP.md](docs/ROADMAP.md).
+El visualizador 3D (Three.js) en [frontend/](frontend/) reproduce las Fases 1–3. Las fases 4 (inserción en la NRHO de Gateway) y 5 (descenso lunar) están planificadas en [docs/ROADMAP.md](docs/ROADMAP.md).
 
 ---
 
@@ -36,6 +36,8 @@ pip install -r requirements.txt
 | Exportar la misión para la web | `python scripts/export_mission.py` | `frontend/data/mission.json` (Fases 1–3, ~0,6 MB) |
 | Compilar el informe | `cd docs/paper/final && pdflatex main.tex && pdflatex main.tex` | `main.pdf` |
 | Regenerar la presentación | `cd docs/presentation && npm install && npm run build` | `Artemis_IV_UdeM.pptx` |
+| Abrir el visualizador 3D | `python -m http.server 8000 -d frontend` → http://localhost:8000 | Misión de las Fases 1–3 en el navegador |
+| Pruebas del visualizador | `node --test frontend/tests/*.test.mjs` | Marcos, interpolación y línea de tiempo |
 | Revisar estilo y tipos | `ruff check src tests scripts && mypy src` | Sin errores |
 
 ### Ejemplo: ascenso completo
@@ -80,7 +82,7 @@ ArtemisIV-flight-dynamics/
 │   ├── paper/final/        # Informe LaTeX (main.tex, main.pdf)
 │   ├── paper/articles/     # Fuentes de la NASA y bibliografía
 │   └── presentation/       # Presentación (.pptx, .pdf) y su generador
-└── frontend/               # Visualizador 3D (en construcción, ver ROADMAP Etapa 2)
+└── frontend/               # Visualizador 3D (Three.js, sin compilador): js/, css/, data/, tests/
 ```
 
 ## Convenciones

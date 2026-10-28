@@ -1,0 +1,97 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Artemis IV · Visualizador de misión</title>
+    <link rel="stylesheet" href="css/style.css" />
+    <script type="importmap">
+      {
+        "imports": {
+          "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+          "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+        }
+      }
+    </script>
+  </head>
+  <body>
+    <main id="viewport" aria-label="Escena 3D de la misión"></main>
+    <div id="loading">Cargando la misión…</div>
+
+    <header class="panel" id="title">
+      <h1>Artemis IV</h1>
+      <p>SLS Block 1B · Fases 1–3: ascenso, aparcamiento y tránsito translunar</p>
+    </header>
+
+    <section class="panel" id="hud" aria-live="polite">
+      <div class="met" id="hud-met">T+ 0d 00:00:00</div>
+      <div class="phase" id="hud-phase">—</div>
+      <dl>
+        <dt id="hud-alt-label">Altitud</dt><dd id="hud-alt">—</dd>
+        <dt>Velocidad (ECI)</dt><dd id="hud-speed">—</dd>
+        <dt>Distancia a la Luna</dt><dd id="hud-dist-moon">—</dd>
+        <dt>Masa</dt><dd id="hud-mass">—</dd>
+        <dt>Marco</dt><dd id="hud-frame">—</dd>
+      </dl>
+    </section>
+
+    <section class="panel" id="controls">
+      <label>Marco <select id="frame"></select></label>
+      <label>Foco
+        <select id="focus">
+          <option value="ship">Nave</option>
+          <option value="earth">Tierra</option>
+          <option value="moon">Luna</option>
+        </select>
+      </label>
+      <fieldset>
+        <legend>Capas</legend>
+        <label><input type="checkbox" id="layer-trajectory" checked /> Trayectoria</label>
+        <label><input type="checkbox" id="layer-moon-orbit" checked /> Órbita lunar</label>
+        <label><input type="checkbox" id="layer-velocity" checked /> Vector velocidad</label>
+        <label><input type="checkbox" id="layer-stars" checked /> Estrellas</label>
+        <label><input type="checkbox" id="layer-axes" /> Ejes del marco</label>
+        <label><input type="checkbox" id="reduce-motion" /> Reducir movimiento</label>
+      </fieldset>
+      <button id="help-btn" type="button">Ayuda (H)</button>
+    </section>
+
+    <footer class="panel" id="timeline">
+      <button id="play" type="button" aria-label="Reproducir">▶</button>
+      <div id="track-wrap">
+        <div id="track"></div>
+        <input id="slider" type="range" min="0" max="1000" step="1" value="0" aria-label="Tiempo de misión" />
+      </div>
+      <select id="speed" aria-label="Velocidad de reproducción"></select>
+    </footer>
+
+    <div id="toast" role="status"></div>
+
+    <dialog id="help">
+      <h2>Cómo usar el visualizador</h2>
+      <table>
+        <tr><td><kbd>Espacio</kbd></td><td>Reproducir / pausar</td></tr>
+        <tr><td><kbd>←</kbd> <kbd>→</kbd></td><td>Evento anterior / siguiente (Max-Q, MECO, TLI…)</td></tr>
+        <tr><td><kbd>↑</kbd> <kbd>↓</kbd></td><td>Más / menos velocidad de reproducción</td></tr>
+        <tr><td><kbd>1</kbd> <kbd>2</kbd> <kbd>3</kbd></td><td>Marco ECI / rotante Tierra–Luna / selenocéntrico</td></tr>
+        <tr><td><kbd>N</kbd> <kbd>T</kbd> <kbd>L</kbd></td><td>Enfocar nave / Tierra / Luna</td></tr>
+        <tr><td><kbd>H</kbd></td><td>Esta ayuda</td></tr>
+        <tr><td>Ratón / dedos</td><td>Girar, acercar y desplazar la cámara</td></tr>
+      </table>
+      <h3>Marcos de referencia</h3>
+      <ul>
+        <li><b>ECI J2000:</b> inercial, centrado en la Tierra. Así integra el simulador.</li>
+        <li><b>Rotante Tierra–Luna:</b> gira con la Luna (ángulo θ = n·t + φ₀ en su plano), que queda fija en el eje x a 384 400 km.</li>
+        <li><b>Selenocéntrico:</b> ejes ECI con origen en la Luna: r − r<sub>Luna</sub>(t).</li>
+      </ul>
+      <p class="note">
+        La barra de tiempo no es lineal: cada fase ocupa un ancho proporcional al logaritmo de su duración.
+        Escala: 1 unidad = 1 000 km. La escena se recentra en el cuerpo enfocado (origen flotante) para no perder precisión en Float32.
+        Datos: <code>scripts/export_mission.py</code> → <code>data/mission.json</code>.
+      </p>
+      <button id="help-close" type="button">Cerrar</button>
+    </dialog>
+
+    <script type="module" src="js/main.js"></script>
+  </body>
+</html>

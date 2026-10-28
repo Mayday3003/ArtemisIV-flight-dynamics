@@ -54,7 +54,7 @@
 
 | Archivo | Situación | Qué hacer |
 |---|---|---|
-| `frontend/index.html`, `frontend/js/main.js`, `frontend/js/animate.js`, `frontend/css/style.css` | 0 líneas | Se construyen en la **Etapa 2** |
+| `frontend/index.html`, `frontend/js/*.js`, `frontend/css/style.css` | 0 líneas | ✅ Construidos en la **Etapa 2** |
 | `src/export_data.py` | 0 líneas | ✅ Eliminado; se creará `src/artemis_sim/export.py` en la **Etapa 1** |
 | `src/orbital_solver.py`, `src/physics_engine.py` | 0 líneas, **duplicaban nombres** del paquete real | ✅ Eliminados |
 | `docs/architecture.md` | 0 líneas | ✅ Escrito |
@@ -256,7 +256,7 @@ Archivo `frontend/data/mission.json`:
 
 ---
 
-### Etapa 2: Visualizador 3D v1
+### Etapa 2: Visualizador 3D v1 ✅ (terminada el 2026-10-28)
 **Objetivo:** ver en el navegador las Fases 1–3 con línea de tiempo, marcos de referencia y HUD.
 **Tiempo estimado:** 1,5 a 2 semanas.
 
@@ -289,21 +289,23 @@ frontend/
 6. **Sin compilador:** `importmap` con `three@0.160.0` desde jsDelivr, igual que la referencia.
 
 **Tareas:**
-- [ ] Escena básica: Tierra con textura y rotación sidérea, Luna en su órbita, estrellas, cámara con OrbitControls.
-- [ ] Cargar `mission.json` y dibujar la trayectoria coloreada por fase.
-- [ ] Nave (un marcador) moviéndose sobre la trayectoria según el reloj.
-- [ ] Línea de tiempo: play/pausa, velocidad (×1 … ×10 000), barra arrastrable, marcas de fase y eventos.
-- [ ] Selector de marco: ECI / rotante / selenocéntrico.
-- [ ] HUD: T+, fase, altitud sobre el cuerpo más cercano, velocidad, masa.
-- [ ] Capas: trayectoria, órbita lunar, vectores, estrellas.
-- [ ] Atajos de teclado y manual (`H`).
-- [ ] Opción "reducir movimiento" y que funcione en el celular.
-- [ ] Publicar en GitHub Pages o Netlify.
+- [x] Escena básica: Tierra con textura y rotación sidérea, Luna en su órbita, estrellas, cámara con OrbitControls.
+- [x] Cargar `mission.json` y dibujar la trayectoria coloreada por fase.
+- [x] Nave (un marcador) moviéndose sobre la trayectoria según el reloj.
+- [x] Línea de tiempo: play/pausa, velocidad (×1 … ×10 000), barra arrastrable, marcas de fase y eventos.
+- [x] Selector de marco: ECI / rotante / selenocéntrico.
+- [x] HUD: T+, fase, altitud sobre el cuerpo más cercano, velocidad, masa.
+- [x] Capas: trayectoria, órbita lunar, vectores, estrellas.
+- [x] Atajos de teclado y manual (`H`).
+- [x] Opción "reducir movimiento" y que funcione en el celular.
+- [ ] Publicar en GitHub Pages o Netlify. *(pendiente: requiere configurar el repositorio)*
 
 **Pruebas:**
-- [ ] `frontend/tests/frames.test.html` (o con Node): la transformación al marco rotante deja la Luna fija en (384,4; 0; 0).
-- [ ] La interpolación JS coincide con la de Python en 5 puntos de control (exportados en el JSON como `checkpoints`).
-- [ ] Prueba manual: los eventos (Max-Q, MECO, TLI) aparecen en el tiempo correcto del HUD.
+- [x] `frontend/tests/frames.test.html` (o con Node): la transformación al marco rotante deja la Luna fija en (384,4; 0; 0).
+- [x] La interpolación JS coincide con la de Python en 5 puntos de control (exportados en el JSON como `checkpoints`).
+- [x] Prueba manual: los eventos (Max-Q, MECO, TLI) aparecen en el tiempo correcto del HUD.
+
+**Notas de la v1:** texturas procedurales (retícula) en lugar de Blue Marble/LRO, sin KaTeX en la ayuda y `THREE.Line` en lugar de `Line2`; quedan como mejoras P2. Las pruebas viven en `frontend/tests/frames.test.mjs` (`node --test`).
 
 **Terminado cuando:** se puede reproducir la misión de la Fase 1 a la 3, cambiar de marco sin saltos y el HUD coincide con `results.json`.
 
