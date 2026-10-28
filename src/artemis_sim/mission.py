@@ -1,4 +1,7 @@
-"""Encadena las Fases 1–3 en una sola trayectoria continua: ascenso → aparcamiento → TLI.
+"""Encadena las fases en una sola trayectoria continua: ascenso → aparcamiento → TLI → NRHO.
+
+`build_mission_phases_1_to_3` llega hasta el sobrevuelo lunar de la Fase 3;
+`build_mission_phases_1_to_4` sigue con el OPF y la inserción en la NRHO de Gateway.
 
 Secuencia física:
 1. Ascenso real desde el LC-39B hasta el MECO (`simulate_full_ascent`).
@@ -23,9 +26,25 @@ import numpy as np
 import numpy.typing as npt
 
 from artemis_sim.ascent_solver import AscentConfig, simulate_full_ascent
-from artemis_sim.constants import EARTH, EARTH_ROTATION, G0_M_S2, MOON, SLS_B1B_EUS
+from artemis_sim.constants import (
+    EARTH,
+    EARTH_ROTATION,
+    G0_M_S2,
+    I_HAB_MASS_KG,
+    MOON,
+    ORION,
+    SLS_B1B_EUS,
+)
+from artemis_sim.cr3bp import MU, UNITS, eci_to_rotating, propagate, rotating_to_eci
 from artemis_sim.ephemeris import LUNAR_MEAN_MOTION_RAD_S, LunarOrbitConfig, get_body_position
 from artemis_sim.export import MissionEvent, MissionPhase, MissionTrajectory, concatenate_segments
+from artemis_sim.nrho_transfer import (
+    NrhoTransfer,
+    departure_angle,
+    optimize_nrho_transfer,
+    refine_transfer,
+)
+from artemis_sim.periodic_orbits import PeriodicOrbit, find_nrho
 from artemis_sim.physics_engine import compute_dynamic_pressure, compute_relative_velocity
 from artemis_sim.shooting_method import (
     ShootingResult,
@@ -203,5 +222,140 @@ def build_mission_phases_1_to_3(
         parking_inclination_rad=inclination,
         flyby_altitude_m=final_alt,
         shooting=shot,
+    )
+    return traj, summary
+
+
+@dataclass(frozen=True, slots=True)
+class MissionSummaryPhase4:
+    """Valores clave de la misión hasta la NRHO (SI)."""
+
+    phases_1_to_3: MissionSummary
+    t_tli_s: float
+    t_opf_s: float
+    t_nri_s: float
+    dv_tli_m_s: float
+    dv_opf_m_s: float
+    dv_nri_m_s: float
+    opf_altitude_m: float
+    mass_after_tli_kg: float
+    mass_in_nrho_kg: float
+    orion_dv_capability_m_s: float
+    transfer: NrhoTransfer
+    nrho: PeriodicOrbit
+
+
+def _rotating_segment(
+    t_nd: npt.NDArray[np.float64],
+    states: npt.NDArray[np.float64],
+    t0_s: float,
+    mass_kg: float,
+    lunar: LunarOrbitConfig,
+) -> Segment:
+    """Tramo adimensional rotante → (t, y) en ECI SI con masa constante."""
+    t = t0_s + t_nd * UNITS.time_s
+    y = np.empty((7, t.size))
+    for i in range(t.size):
+        st = rotating_to_eci(states[:, i], float(t[i]), lunar)
+        y[0:3, i], y[3:6, i], y[6, i] = st.position, st.velocity, mass_kg
+    return t, y
+
+
+def _orion_burn_mass(mass_kg: float, dv_m_s: float) -> float:
+    return mass_kg * float(np.exp(-dv_m_s / (ORION.isp_vac_s * G0_M_S2)))
+
+
+def build_mission_phases_1_to_4(
+    nrho_revolutions: float = 1.0,
+) -> tuple[MissionTrajectory, MissionSummaryPhase4]:
+    """Misión continua despegue → aparcamiento → TLI → OPF → NRI → NRHO.
+
+    1. Se construyen las Fases 1–3 (dan la TLI semilla y la geometría de la ventana).
+    2. Se optimiza la transferencia TLI → OPF → NRI en el CR3BP (`optimize_nrho_transfer`).
+    3. Ventana de lanzamiento: el α óptimo del punto de la TLI se consigue girando la fase
+       inicial de la Luna, φ0' = φ0 + (α_semilla − α_óptimo); se repropaga el aparcamiento.
+    4. Se refina la transferencia con el punto de partida real y se pasa todo a ECI.
+    Tras la TLI la EUS se separa: queda Orion + I-Hab, y los encendidos usan el OMS-E.
+    """
+    traj3, summ3 = build_mission_phases_1_to_3()
+    lunar0 = traj3.lunar_config
+    t_meco, t_tli = summ3.t_meco_s, summ3.t_tli_s
+    i_tli = int(np.searchsorted(traj3.t, t_tli))
+    post = ArtemisState(traj3.y[0:3, i_tli], traj3.y[3:6, i_tli], 1.0, t_tli)
+    pre = ArtemisState(post.position, post.velocity - summ3.shooting.delta_v, 1.0, t_tli)
+    pre_rot, post_rot = eci_to_rotating(pre, lunar0), eci_to_rotating(post, lunar0)
+
+    nrho = find_nrho()
+    opt = optimize_nrho_transfer(pre_rot, post_rot, nrho)
+
+    phase0 = lunar0.initial_phase_rad + departure_angle(pre_rot) - opt.departure_angle
+    lunar = LunarOrbitConfig(
+        inclination_rad=lunar0.inclination_rad,
+        raan_rad=lunar0.raan_rad,
+        initial_phase_rad=float(np.mod(phase0, 2.0 * np.pi)),
+    )
+    i_meco = int(np.searchsorted(traj3.t, t_meco, side="right")) - 1
+    st_park0 = ArtemisState(traj3.y[0:3, i_meco], traj3.y[3:6, i_meco], traj3.y[6, i_meco], t_meco)
+    coast = propagate_verlet(
+        st_park0, t_tli, dt=1.0, sample_every=10, include_moon=True, lunar_config=lunar
+    )
+    burn_rot = eci_to_rotating(coast[-1], lunar)
+    tr = refine_transfer(opt, burn_rot, nrho)
+
+    # Masas: separación de la EUS tras la TLI; OPF y NRI con el OMS-E de Orion
+    m_tli = ORION.dry_mass_kg + ORION.propellant_mass_kg + I_HAB_MASS_KG
+    m_opf = _orion_burn_mass(m_tli, tr.dv_opf_m_s)
+    m_nri = _orion_burn_mass(m_opf, tr.dv_nri_m_s)
+
+    asc = traj3.t <= t_meco
+    segments: list[Segment] = [(traj3.t[asc], traj3.y[:, asc]), _states_to_segment(coast)]
+    t_nd = 0.0
+    for i, (x, dt) in enumerate(zip(tr.nodes, tr.durations, strict=True)):
+        prop = propagate(x, float(dt), dense_points=300)
+        mass = m_tli if i < tr.flyby_node else m_opf
+        segments.append(_rotating_segment(t_nd + prop.t, prop.states, t_tli, mass, lunar))
+        t_nd += float(dt)
+    t_opf = t_tli + tr.flyby_time * UNITS.time_s
+    t_nri = t_tli + tr.time_of_flight * UNITS.time_s
+    orbit_prop = propagate(tr.nrho_state, nrho_revolutions * nrho.period, dense_points=8000)
+    segments.append(_rotating_segment(orbit_prop.t, orbit_prop.states, t_nri, m_nri, lunar))
+
+    t_all, y_all = concatenate_segments(segments)
+    phases = [
+        MissionPhase("ascent", "Ascenso", 0.0, t_meco),
+        MissionPhase("parking", "Órbita de aparcamiento", t_meco, t_tli),
+        MissionPhase("transit", "Tránsito translunar", t_tli, t_nri),
+        MissionPhase("nrho", "NRHO de Gateway", t_nri, float(t_all[-1])),
+    ]
+    keep = {"Max-Q", "Separación de SRB", "MECO y separación de la etapa central"}
+    events = [e for e in traj3.events if e.label in keep] + [
+        MissionEvent(t_meco, "Inserción en órbita (EUS)"),
+        MissionEvent(t_tli, "Inyección translunar (TLI) y separación de la EUS"),
+        MissionEvent(t_opf, "Sobrevuelo lunar propulsado (OPF)"),
+        MissionEvent(t_nri, "Inserción en la NRHO (NRI)"),
+        MissionEvent(float(t_all[-1]), f"Fin: {nrho_revolutions:g} vuelta(s) a la NRHO"),
+    ]
+    traj = MissionTrajectory(t_all, y_all, phases, events, lunar)
+
+    moon = np.array([1.0 - MU, 0.0, 0.0])
+    opf_alt = (
+        float(np.linalg.norm(tr.nodes[tr.flyby_node, 0:3] - moon)) * UNITS.length_m
+        - MOON.equatorial_radius_m
+    )
+    ve = ORION.isp_vac_s * G0_M_S2
+    summary = MissionSummaryPhase4(
+        phases_1_to_3=summ3,
+        t_tli_s=t_tli,
+        t_opf_s=t_opf,
+        t_nri_s=t_nri,
+        dv_tli_m_s=tr.dv_tli_m_s,
+        dv_opf_m_s=tr.dv_opf_m_s,
+        dv_nri_m_s=tr.dv_nri_m_s,
+        opf_altitude_m=opf_alt,
+        mass_after_tli_kg=m_tli,
+        mass_in_nrho_kg=m_nri,
+        orion_dv_capability_m_s=ve * float(np.log(m_tli / (m_tli - ORION.propellant_mass_kg))),
+        transfer=tr,
+        nrho=nrho,
     )
     return traj, summary

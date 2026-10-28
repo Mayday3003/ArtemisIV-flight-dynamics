@@ -62,6 +62,13 @@ class PeriodicOrbit:
         lam = float(np.max(np.abs(self.eigenvalues)))
         return 0.5 * (lam + 1.0 / lam)
 
+    def state_at(self, tau: float, mu: float = MU) -> FloatArray:
+        """Estado en la fase τ (fracción del periodo; τ = 0 es el estado inicial, el apolunio)."""
+        t = (tau % 1.0) * self.period
+        if t == 0.0:
+            return self.state0.copy()
+        return np.asarray(propagate(self.state0, t, mu=mu).states[:, -1])
+
     def sample(self, n: int = 400, mu: float = MU) -> FloatArray:
         """Estados (6, n) equiespaciados en un periodo."""
         return propagate(self.state0, self.period, dense_points=n, mu=mu).states

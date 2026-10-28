@@ -264,3 +264,24 @@ SLS_B1B_EUS: Final[StageSpec] = StageSpec(
     thrust_sea_level_n=None,  # No opera en atmósfera densa; sólo vacío/alta altitud
     status="pendiente de verificar",
 )
+
+# =====================================================================================
+# 6. ORION Y CARGA CO-MANIFESTADA (Fase 4)
+# =====================================================================================
+# Módulo de servicio europeo (ESM) de Orion, motor principal OMS-E (AJ10-190 reacondicionado):
+# - Empuje en vacío 26,7 kN e Isp 316 s: NASA NTRS 20240003648 ("Artemis I Engine Performance").
+# - Propelente utilizable (MMH/MON-3): 8 602 kg, requisito del ESM: NASA NTRS 20180004488.
+# - Masa total de Orion (CM + ESM + adaptador, sin torre de escape) ≈ 26,5 t: aproximada.
+ORION: Final[StageSpec] = StageSpec(
+    name="Orion (CM + ESM), motor OMS-E",
+    dry_mass_kg=26_500.0 - 8_602.0,
+    propellant_mass_kg=8_602.0,
+    thrust_vac_n=26_700.0,
+    isp_vac_s=316.0,
+    thrust_sea_level_n=None,
+    status="aproximado",
+)
+
+# Módulo de habitación internacional (I-Hab) que Artemis IV lleva a Gateway acoplado a Orion.
+# Masa ≈ 10 t (orden de magnitud publicado por ESA; aproximado).
+I_HAB_MASS_KG: Final[float] = 10_000.0

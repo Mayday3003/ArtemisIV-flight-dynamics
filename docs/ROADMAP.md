@@ -355,7 +355,7 @@ frontend/
 
 ---
 
-### Etapa 4: Transferencia TLI → NRHO (Fase 4 completa)
+### Etapa 4: Transferencia TLI → NRHO (Fase 4 completa) ✅ (terminada el 2026-10-28)
 **Objetivo:** que la trayectoria salga de la Tierra y **termine en la NRHO**, con el Δv de inserción que debe dar Orion.
 **Tiempo estimado:** 1,5 a 2 semanas.
 
@@ -369,15 +369,32 @@ frontend/
 3. **Combustible de Orion:** comprobar con Tsiolkovsky que el Δv_NRI sea compatible con el módulo de servicio europeo de Orion (motor OMS-E, Isp ≈ 316 s). Documentar la fuente de los datos de Orion en `constants.py`.
 
 **Archivos:**
-- [ ] `src/artemis_sim/multiple_shooting.py`: formulación general (nodos, continuidad, jacobiano por bloques con STM).
-- [ ] `src/artemis_sim/nrho_transfer.py`: semilla (la TLI actual + punto del perilunio) y optimización del Δv de inserción.
-- [ ] Agregar `ORION` a `constants.py` (masa, Isp y empuje del OMS-E, con su fuente).
+- [x] `src/artemis_sim/multiple_shooting.py`: formulación general (nodos, continuidad, jacobiano por bloques con STM).
+- [x] `src/artemis_sim/nrho_transfer.py`: semilla (la TLI actual + punto del perilunio) y optimización del Δv de inserción.
+- [x] Agregar `ORION` a `constants.py` (masa, Isp y empuje del OMS-E, con su fuente).
 
 **Pruebas:**
-- [ ] Disparo múltiple sobre un caso conocido (una órbita circular partida en 4 tramos): debe converger a continuidad exacta.
-- [ ] El jacobiano por bloques coincide con diferencias finitas.
-- [ ] La trayectoria final llega a la NRHO con error de posición < 1 km y de velocidad < 1 m/s.
-- [ ] El Δv total (TLI + NRI) es del orden de los valores publicados para transferencias a la NRHO (documentar la referencia usada).
+- [x] Disparo múltiple sobre un caso conocido (una órbita circular partida en 4 tramos): debe converger a continuidad exacta.
+- [x] El jacobiano por bloques coincide con diferencias finitas.
+- [x] La trayectoria final llega a la NRHO con error de posición < 1 km y de velocidad < 1 m/s.
+- [x] El Δv total (TLI + NRI) es del orden de los valores publicados para transferencias a la NRHO (documentar la referencia usada).
+
+**Resultados** (`python scripts/export_mission.py`):
+
+| Maniobra | Quién | Δv | Cuándo |
+|---|---|---|---|
+| TLI | EUS | 3 240 m/s | T+2 h 20 min |
+| OPF, sobrevuelo propulsado a 995 km de altitud | Orion (OMS-E) | 304 m/s | TLI + 3,09 d |
+| NRI, inserción en la NRHO | Orion (OMS-E) | 174 m/s | TLI + 4,49 d |
+
+Orion + I-Hab pasa de 36,5 t a 31,3 t; con el I-Hab acoplado el ESM puede dar 833 m/s, así que la transferencia usa el 57 %. Referencia de orden de magnitud: en Artemis I el OPF fue de ≈ 180 m/s y la inserción en la DRO de ≈ 110–150 m/s (ESA, *Orion blog*); NASA cifra la inserción + salida de la NRHO en ≈ 1 000 m/s combinados.
+
+**Cambios respecto al plan:**
+- **Perfil OPF + NRI en vez de inserción directa:** en el marco rotante la nave llega con v∞ hacia −y y la NRHO sur pasa por el perilunio hacia +y; insertar ahí directamente costaba > 1,4 km/s.
+- **Semilla hacia atrás:** se propaga desde la NRHO con una NRI de 50 m/s en 26 direcciones y 5 fases cerca del apolunio, y se eligen las trayectorias que rozan la Luna (100–400 km) 2–5 días antes (`backward_seeds`).
+- **Ventana de lanzamiento como variable:** el punto de la TLI se desliza sobre la órbita de aparcamiento (α libre) y luego se fija la fase de la Luna para conseguirlo (`build_mission_phases_1_to_4`).
+- **Verificación independiente:** cada tramo del disparo múltiple se repropaga en el modelo ECI geocéntrico (no en el CR3BP) y cae en el nodo siguiente con < 1 km y < 1 m/s.
+- **Pendiente:** la sección del informe LaTeX con el presupuesto de Δv (no se modificó `main.tex`). SLSQP termina por límite de iteraciones con mejoras < 5 m/s: el resultado es un mínimo local, no el óptimo global.
 
 **Terminado cuando:** el visualizador muestra el vuelo Tierra → Luna → NRHO sin saltos, y el informe tiene una sección nueva con el presupuesto de Δv completo.
 

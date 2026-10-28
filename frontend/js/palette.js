@@ -3,4 +3,5 @@ export const PHASE_COLORS = {
   ascent: "#e8702a",
   parking: "#3fa7d6",
   transit: "#b9a3ff",
+  nrho: "#7cf29a",
 };

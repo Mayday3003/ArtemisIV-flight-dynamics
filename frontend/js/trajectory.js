@@ -112,7 +112,7 @@ export function createNrho(scene, frames, nrho) {
   attr.setUsage(THREE.DynamicDrawUsage);
   const geo = new THREE.BufferGeometry();
   geo.setAttribute("position", attr);
-  const line = new THREE.LineLoop(geo, new THREE.LineBasicMaterial({ color: 0x7cf29a }));
+  const line = new THREE.LineLoop(geo, new THREE.LineBasicMaterial({ color: 0x7cf29a, transparent: true, opacity: 0.45 }));
   line.frustumCulled = false;
   scene.add(line);
 

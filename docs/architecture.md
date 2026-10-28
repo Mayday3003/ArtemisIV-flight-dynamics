@@ -42,7 +42,9 @@ flowchart TB
 | `shooting_method.py` | Problema de valores en la frontera de la TLI | `solve_tli_shooting`, `numerical_jacobian`, `kepler_transfer_geometry` |
 | `cr3bp.py` | CR3BP adimensional baricéntrico: Ω y derivadas, STM (42 EDO, DOP853 1e-12), puntos de Lagrange, rotante ↔ ECI | `propagate`, `lagrange_points`, `jacobi_constant`, `rotating_to_eci` |
 | `periodic_orbits.py` | Halos L2 por corrección diferencial y continuación; NRHO 9:2 de Gateway | `correct_halo`, `continue_family`, `find_nrho` |
-| `mission.py` | Encadena las Fases 1–3 (ascenso → aparcamiento → TLI → tránsito) con la ventana de lanzamiento | `build_mission_phases_1_to_3` |
+| `multiple_shooting.py` | Disparo múltiple: nodos, continuidad (con nodos de encendido), jacobiano por bloques con la STM, Newton de mínima norma | `MultipleShooting`, `newton_min_norm` |
+| `nrho_transfer.py` | Transferencia TLI → OPF → NRI: semillas hacia atrás desde la NRHO, homotopía y SLSQP | `backward_seeds`, `design_transfer`, `optimize_nrho_transfer`, `refine_transfer` |
+| `mission.py` | Encadena las fases (ascenso → aparcamiento → TLI → OPF → NRI → NRHO) con la ventana de lanzamiento | `build_mission_phases_1_to_3`, `build_mission_phases_1_to_4` |
 | `export.py` | Remuestreo con Hermite cúbico y exportación a JSON por columnas para la web | `MissionTrajectory`, `resample`, `to_json`, `from_json` |
 
 ## Flujo de un cálculo completo
@@ -74,4 +76,4 @@ sequenceDiagram
 
 ## Dónde crecerá
 
-Ver [ROADMAP.md](ROADMAP.md): `nrho_transfer.py` (Fase 4), `lunar_gravity.py` y `descent_solver.py` (Fase 5), y `pipeline.py` (misión completa).
+Ver [ROADMAP.md](ROADMAP.md): `lunar_gravity.py` y `descent_solver.py` (Fase 5), y `pipeline.py` (misión completa).
