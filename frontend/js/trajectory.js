@@ -104,3 +104,26 @@ export function createMoonOrbit(scene, frames, segments = 256) {
   }
   return { line, update };
 }
+
+/** NRHO de Gateway: dada en el marco rotante, se lleva a ECI con el instante actual. */
+export function createNrho(scene, frames, nrho) {
+  const n = nrho.x.length;
+  const attr = new THREE.BufferAttribute(new Float32Array(3 * n), 3);
+  attr.setUsage(THREE.DynamicDrawUsage);
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute("position", attr);
+  const line = new THREE.LineLoop(geo, new THREE.LineBasicMaterial({ color: 0x7cf29a }));
+  line.frustumCulled = false;
+  scene.add(line);
+
+  function update(frame, t, focus) {
+    for (let i = 0; i < n; i++) {
+      const r = frames.toFrame(frame, frames.fromRotating([nrho.x[i], nrho.y[i], nrho.z[i]], t), t);
+      attr.array[3 * i] = (r[0] - focus[0]) / KM_PER_UNIT;
+      attr.array[3 * i + 1] = (r[1] - focus[1]) / KM_PER_UNIT;
+      attr.array[3 * i + 2] = (r[2] - focus[2]) / KM_PER_UNIT;
+    }
+    attr.needsUpdate = true;
+  }
+  return { line, update };
+}

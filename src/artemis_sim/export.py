@@ -12,7 +12,8 @@ Formato (schema_version = 1):
   "phases": [{"id", "name", "t_start", "t_end"}],
   "events": [{"t", "label"}],
   "samples": {"t", "x", "y", "z", "vx", "vy", "vz", "m", "phase_index"},
-  "checkpoints": [...]              # estados exactos en instantes fuera de la malla
+  "checkpoints": [...],             # estados exactos en instantes fuera de la malla
+  "nrho": {...}                     # opcional: NRHO en el marco rotante geocéntrico (km)
 }
 Las columnas permiten cargar cada arreglo directamente como Float32Array/Float64Array.
 """
@@ -149,8 +150,12 @@ def phase_index(traj: MissionTrajectory) -> npt.NDArray[np.int64]:
 def to_dict(
     traj: MissionTrajectory,
     checkpoints: MissionTrajectory | None = None,
+    extra: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
-    """Convierte la trayectoria al diccionario del formato JSON (km, km/s, t)."""
+    """Convierte la trayectoria al diccionario del formato JSON (km, km/s, t).
+
+    `extra` agrega claves opcionales de nivel superior (p. ej. "nrho") sin cambiar el esquema.
+    """
     km = 1e-3
     lc = traj.lunar_config
 
@@ -202,6 +207,8 @@ def to_dict(
             }
             for i in range(checkpoints.t.size)
         ]
+    if extra:
+        data.update(extra)
     return data
 
 
@@ -209,11 +216,12 @@ def to_json(
     traj: MissionTrajectory,
     path: str | Path,
     checkpoints: MissionTrajectory | None = None,
+    extra: dict[str, Any] | None = None,
 ) -> Path:
     """Escribe la trayectoria en JSON compacto (sin NaN ni infinitos)."""
     out = Path(path)
     out.parent.mkdir(parents=True, exist_ok=True)
-    payload = to_dict(traj, checkpoints)
+    payload = to_dict(traj, checkpoints, extra)
     out.write_text(json.dumps(payload, separators=(",", ":"), allow_nan=False), encoding="utf-8")
     return out
 

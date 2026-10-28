@@ -6,7 +6,7 @@ import { createHud } from "./hud.js";
 import { hermiteState, toTypedSamples } from "./interpolate.js";
 import { KM_PER_UNIT, createScene, mul3, rotZ, setMatrix } from "./scene.js";
 import { createTimeline } from "./timeline.js";
-import { createMoonOrbit, createTrajectory } from "./trajectory.js";
+import { createMoonOrbit, createNrho, createTrajectory } from "./trajectory.js";
 
 const $ = (id) => document.getElementById(id);
 const SUN_DIR_ECI = [1, 0, 0]; // dirección fija del Sol (solo para iluminar)
@@ -29,6 +29,7 @@ async function main() {
 
   const trajectory = createTrajectory(scene, samples, mission.phases, frames);
   const moonOrbit = createMoonOrbit(scene, frames);
+  const nrho = mission.nrho ? createNrho(scene, frames, mission.nrho) : null;
 
   // LC-39B: fijo a la Tierra (en t = 0 el marco terrestre coincide con ECI)
   const pad = new THREE.Mesh(new THREE.SphereGeometry(0.003, 12, 8), new THREE.MeshBasicMaterial({ color: 0xe8702a }));
@@ -84,6 +85,7 @@ async function main() {
   const layers = {
     "layer-trajectory": (v) => trajectory.setVisible(v),
     "layer-moon-orbit": (v) => (moonOrbit.line.visible = v),
+    "layer-nrho": (v) => nrho && (nrho.line.visible = v),
     "layer-velocity": (v) => (velocity.visible = v),
     "layer-stars": (v) => (view.stars.visible = v),
     "layer-axes": (v) => (view.axes.visible = v),
@@ -176,6 +178,7 @@ async function main() {
 
     trajectory.update(frame, focus, st.k, shipF);
     moonOrbit.update(frame, t, focus);
+    if (nrho?.line.visible) nrho.update(frame, t, focus);
     view.stars.position.copy(camera.position);
 
     const phase = mission.phases[samples.phase[st.k + 1 < samples.n && samples.t[st.k + 1] <= t ? st.k + 1 : st.k]];

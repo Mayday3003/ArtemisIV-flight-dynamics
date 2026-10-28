@@ -62,3 +62,13 @@ test("la escala de la línea de tiempo es monótona e invertible", async () => {
   assert.equal(scale.toFraction(0), 0);
   assert.ok(Math.abs(scale.toFraction(mission.phases.at(-1).t_end) - 1) < 1e-12);
 });
+
+test("fromRotating es la inversa del marco rotante y la NRHO rodea a la Luna", () => {
+  const r = [380000, 12000, -50000];
+  const back = frames.toFrame("rot", frames.fromRotating(r, 9.9e4), 9.9e4);
+  assert.ok(norm(sub(back, r)) < 1e-6);
+  const n = mission.nrho;
+  const d = n.x.map((x, i) => Math.hypot(x - 384400, n.y[i], n.z[i]));
+  assert.ok(Math.abs(Math.min(...d) - n.perilune_km) < 50, `perilunio ${Math.min(...d)}`);
+  assert.ok(Math.abs(Math.max(...d) - n.apolune_km) < 50, `apolunio ${Math.max(...d)}`);
+});

@@ -48,6 +48,7 @@
         <legend>Capas</legend>
         <label><input type="checkbox" id="layer-trajectory" checked /> Trayectoria</label>
         <label><input type="checkbox" id="layer-moon-orbit" checked /> Órbita lunar</label>
+        <label><input type="checkbox" id="layer-nrho" checked /> NRHO (Gateway)</label>
         <label><input type="checkbox" id="layer-velocity" checked /> Vector velocidad</label>
         <label><input type="checkbox" id="layer-stars" checked /> Estrellas</label>
         <label><input type="checkbox" id="layer-axes" /> Ejes del marco</label>
@@ -78,6 +79,12 @@
         <tr><td><kbd>H</kbd></td><td>Esta ayuda</td></tr>
         <tr><td>Ratón / dedos</td><td>Girar, acercar y desplazar la cámara</td></tr>
       </table>
+      <h3>NRHO de Gateway</h3>
+      <p>
+        Órbita de halo casi rectilínea 9:2 alrededor de L2 (periodo 6,56 d; perilunio ≈ 3 250 km sobre el polo norte,
+        apolunio ≈ 71 000 km sobre el polo sur), calculada con <code>periodic_orbits.find_nrho()</code>.
+        Es periódica en el marco rotante: actívalo con <kbd>2</kbd> para verla fija.
+      </p>
       <h3>Marcos de referencia</h3>
       <ul>
         <li><b>ECI J2000:</b> inercial, centrado en la Tierra. Así integra el simulador.</li>

@@ -311,7 +311,7 @@ frontend/
 
 ---
 
-### Etapa 3: La órbita NRHO (base de la Fase 4)
+### Etapa 3: La órbita NRHO (base de la Fase 4) ✅ (terminada el 2026-10-28)
 **Objetivo:** calcular la órbita NRHO de Gateway dentro de nuestro modelo de tres cuerpos.
 **Tiempo estimado:** 2 semanas. **Es la etapa matemáticamente más exigente.**
 
@@ -333,16 +333,23 @@ frontend/
 7. **Estabilidad:** autovalores de la matriz de monodromía Φ(T). La NRHO 9:2 es "casi estable" (índice de estabilidad cercano a 1). Por eso Gateway necesita solo pequeñas correcciones.
 
 **Archivos nuevos:**
-- [ ] `src/artemis_sim/cr3bp.py`: ecuaciones adimensionales, Ω y sus derivadas, puntos de Lagrange, integración con STM y conversión rotante ↔ ECI dimensional.
-- [ ] `src/artemis_sim/periodic_orbits.py`: semilla de Richardson, corrección diferencial, continuación y `find_nrho(period_days=6.56)`.
+- [x] `src/artemis_sim/cr3bp.py`: ecuaciones adimensionales, Ω y sus derivadas, puntos de Lagrange, integración con STM y conversión rotante ↔ ECI dimensional.
+- [x] `src/artemis_sim/periodic_orbits.py`: semilla de Richardson, corrección diferencial, continuación y `find_nrho(period_days=6.56)`.
 
 **Pruebas (`tests/test_cr3bp.py`, `tests/test_periodic_orbits.py`):**
-- [ ] L1 y L2 coinciden con la tabla publicada para μ Tierra–Luna (x_L1 ≈ 0,8369 y x_L2 ≈ 1,1557 en unidades adimensionales).
-- [ ] La STM de DOP853 coincide con diferencias finitas (error < 1e-6).
-- [ ] La constante de Jacobi adimensional coincide con `compute_jacobi_constant` geocéntrica (ya implementada).
-- [ ] Una halo corregida se cierra: |x(T) − x(0)| < 1e-9 (adimensional).
-- [ ] La NRHO 9:2 tiene periodo de 6,56 ± 0,01 días y perilunio en el rango esperado.
-- [ ] El determinante de la monodromía es 1, porque el flujo es simpléctico: Φᵀ J Φ = J.
+- [x] L1 y L2 coinciden con la tabla publicada para μ Tierra–Luna (x_L1 ≈ 0,8369 y x_L2 ≈ 1,1557 en unidades adimensionales).
+- [x] La STM de DOP853 coincide con diferencias finitas (error < 1e-6).
+- [x] La constante de Jacobi adimensional coincide con `compute_jacobi_constant` geocéntrica (ya implementada).
+- [x] Una halo corregida se cierra: |x(T) − x(0)| < 1e-9 (adimensional).
+- [x] La NRHO 9:2 tiene periodo de 6,56 ± 0,01 días y perilunio en el rango esperado.
+- [x] El determinante de la monodromía es 1, porque el flujo es simpléctico: Φᵀ J Φ = J.
+
+**Resultados:** NRHO 9:2 con periodo 6,560 d, perilunio 3 248 km y apolunio 71 218 km (desde el centro lunar), índice de estabilidad ν = 1,32 y det Φ(T) = 1. La familia sur va de 6,56 d (NRHO) a 14,4 d (halos cerca de L2): ver `docs/figures/fig09_familia_halo.png` (`scripts/nrho_figures.py`). La NRHO se exporta a `mission.json` (clave opcional `nrho`) y aparece en la capa "NRHO (Gateway)" del visualizador.
+
+**Cambios respecto al plan:**
+- **Semilla:** en lugar de la aproximación de Richardson se usa un miembro NRHO de la base de datos *Three-Body Periodic Orbits* de NASA/JPL (`SEED_NRHO`), que la corrección diferencial ajusta a nuestro μ (0,012156 frente a 0,012151 de JPL). La familia se obtiene por continuación desde ahí.
+- **Continuación:** la familia tiene un pliegue en z₀ (|z₀| máx. ≈ 0,2); hacia L2 se continúa con x₀ fijo (`continue_family(parameter="x")`) y se descarta cualquier salto a otra familia.
+- **Simplecticidad:** con coordenadas (posición, velocidad) en el marco rotante la STM no cumple ΦᵀJΦ = J en la forma canónica (esa forma vale para los momentos p = v + ω×r). Se prueba lo equivalente: det Φ(T) = 1 y autovalores en pares (λ, 1/λ).
 
 **Terminado cuando:** `find_nrho()` devuelve la NRHO 9:2, las figuras muestran la familia de halos en el marco rotante y la órbita se ve en el visualizador (capa "NRHO").
 

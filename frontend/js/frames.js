@@ -67,7 +67,20 @@ export function createFrames(moon) {
     return applyMatrix(matrix(frame, t), v);
   }
 
-  return { moonPosition, matrix, origin, toFrame, directionToFrame, radius: d, normal: h, meanMotion: n };
+  /** Punto del marco rotante geocéntrico (km) → ECI en el instante t (Mᵀ·r). */
+  function fromRotating(r, t) {
+    const M = matrix("rot", t);
+    return [
+      M[0] * r[0] + M[3] * r[1] + M[6] * r[2],
+      M[1] * r[0] + M[4] * r[1] + M[7] * r[2],
+      M[2] * r[0] + M[5] * r[1] + M[8] * r[2],
+    ];
+  }
+
+  return {
+    moonPosition, matrix, origin, toFrame, directionToFrame, fromRotating,
+    radius: d, normal: h, meanMotion: n,
+  };
 }
 
 export function applyMatrix(M, v) {
