@@ -1,4 +1,5 @@
-"""Exporta la misión (Fases 1–4: despegue → NRHO) a frontend/data/mission.json para la web.
+"""Exporta la misión completa (Fases 1–5: despegue → NRHO → polo sur) a
+frontend/data/mission.json para la web.
 
 Uso (desde la raíz del repositorio):
     python scripts/export_mission.py
@@ -15,14 +16,22 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
 
 from artemis_sim.cr3bp import MU, UNITS  # noqa: E402
+from artemis_sim.descent_solver import LandingSite  # noqa: E402
 from artemis_sim.export import MissionTrajectory, hermite_interpolate, resample, to_json  # noqa: E402
-from artemis_sim.mission import build_mission_phases_1_to_4  # noqa: E402
+from artemis_sim.mission import build_mission_phases_1_to_5  # noqa: E402
 from artemis_sim.periodic_orbits import PeriodicOrbit  # noqa: E402
 
 OUT = ROOT / "frontend" / "data" / "mission.json"
 
 # Paso de muestreo por fase (s): fino donde la nave cambia rápido, grueso en el tránsito.
-DT_BY_PHASE = {"ascent": 1.0, "parking": 20.0, "transit": 60.0, "nrho": 60.0}
+DT_BY_PHASE = {
+    "ascent": 1.0,
+    "parking": 20.0,
+    "transit": 60.0,
+    "nrho": 60.0,
+    "descent": 10.0,
+    "landing": 1.0,
+}
 
 
 def nrho_payload(orbit: PeriodicOrbit, points: int = 600) -> dict[str, object]:
@@ -46,9 +55,26 @@ def nrho_payload(orbit: PeriodicOrbit, points: int = 600) -> dict[str, object]:
     }
 
 
+def site_payload(site: LandingSite) -> dict[str, object]:
+    """Sitio de alunizaje en el mismo marco rotante geocéntrico que la NRHO (gira con la Luna)."""
+    p = site.position / 1e3
+    x_moon = UNITS.length_m / 1e3
+    return {
+        "landing_site": {
+            "name": site.name,
+            "lat_deg": site.lat_deg,
+            "lon_deg": site.lon_deg,
+            "frame": "EARTH_MOON_ROTATING_GEOCENTRIC",
+            # MF → rotante: giro de 180° en z (ver moon_frame)
+            "position_km": [round(x_moon - p[0], 4), round(-p[1], 4), round(p[2], 4)],
+        }
+    }
+
+
 def main() -> None:
-    print("Construyendo la misión (ascenso → aparcamiento → TLI → OPF → NRI → NRHO)…")
-    raw, summary = build_mission_phases_1_to_4()
+    print("Construyendo la misión (ascenso → … → NRHO → DOI → PDI → alunizaje)…")
+    raw, summary5 = build_mission_phases_1_to_5()
+    summary = summary5.phases_1_to_4
     s3 = summary.phases_1_to_3
     print(f"  MECO          t = {s3.t_meco_s:8.1f} s")
     print(f"  Inserción     Δv = {s3.dv_insertion_m_s:7.1f} m/s")
@@ -68,6 +94,21 @@ def main() -> None:
         f"{summary.orion_dv_capability_m_s:.0f} m/s)"
     )
 
+    d = summary5.descent
+    print(
+        f"  DOI (HLS)     Δv = {d.dv_doi_m_s:6.1f} m/s   planeo {d.t_pdi / 3600:.2f} h   "
+        f"PDI a {d.pdi_lat_lon_deg[0]:.1f}°, {d.pdi_lat_lon_deg[1]:.1f}°"
+    )
+    print(
+        f"  Descenso      Δv = {d.dv_powered_m_s:6.1f} m/s   "
+        f"{d.t_touchdown - d.t_pdi:.0f} s   empuje máx. {100 * d.max_throttle_fraction:.0f} %"
+    )
+    print(
+        f"  Alunizaje     {d.site.name} ({d.site.lat_deg}°, {d.site.lon_deg}°)   "
+        f"error {d.landing_error_m:.2f} m   v = {np.linalg.norm(d.touchdown_velocity):.2f} m/s   "
+        f"HLS {d.mass_initial_kg / 1e3:.0f} t → {d.mass_landed_kg / 1e3:.1f} t"
+    )
+
     traj = resample(raw, DT_BY_PHASE)
 
     # Puntos de control fuera de la malla (para validar la interpolación del navegador)
@@ -83,7 +124,9 @@ def main() -> None:
         + " / ".join(f"{d / 1e3:,.0f} km" for d in nrho.moon_distance_range_m())
     )
 
-    path = to_json(traj, OUT, checkpoints=checkpoints, extra=nrho_payload(nrho))
+    path = to_json(
+        traj, OUT, checkpoints=checkpoints, extra={**nrho_payload(nrho), **site_payload(d.site)}
+    )
     print(
         f"Exportado: {path.relative_to(ROOT)}  ({traj.t.size} muestras, "
         f"{path.stat().st_size / 1e6:.2f} MB)"

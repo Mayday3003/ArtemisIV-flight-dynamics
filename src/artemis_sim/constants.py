@@ -285,3 +285,23 @@ ORION: Final[StageSpec] = StageSpec(
 # Módulo de habitación internacional (I-Hab) que Artemis IV lleva a Gateway acoplado a Orion.
 # Masa ≈ 10 t (orden de magnitud publicado por ESA; aproximado).
 I_HAB_MASS_KG: Final[float] = 10_000.0
+
+# =====================================================================================
+# 7. MÓDULO DE ALUNIZAJE HUMANO (HLS) (Fase 5)
+# =====================================================================================
+# Artemis IV usa el Starship HLS de SpaceX. SpaceX no publica masas ni empujes de esta
+# variante, así que TODOS los valores son SUPUESTOS del proyecto, elegidos para ser coherentes:
+# - Masa en seco 120 t y 250 t de propelente disponibles en la NRHO (tras repostar en órbita
+#   terrestre), suficientes para descender y conservar reserva para el ascenso.
+# - Un único sistema de descenso estrangulable entre 10 % y 100 % de 1,5 MN, con Isp 350 s
+#   (entre el Raptor a nivel del mar, ~330 s, y el de vacío, ~380 s). El estrangulamiento al
+#   10 % permite mantener la nave suspendida con la masa de aterrizaje (~1/6 de g lunar).
+HLS: Final[StageSpec] = StageSpec(
+    name="Starship HLS (valores supuestos)",
+    dry_mass_kg=120_000.0,
+    propellant_mass_kg=250_000.0,
+    thrust_vac_n=1.5e6,
+    isp_vac_s=350.0,
+    status="supuesto",
+)
+HLS_MIN_THROTTLE: Final[float] = 0.10

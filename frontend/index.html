@@ -20,7 +20,7 @@
 
     <header class="panel" id="title">
       <h1>Artemis IV</h1>
-      <p>SLS Block 1B + Orion · Fases 1–4: ascenso, aparcamiento, tránsito y NRHO de Gateway</p>
+      <p>SLS Block 1B + Orion · Fases 1–5: ascenso, aparcamiento, tránsito, NRHO de Gateway y descenso al polo sur</p>
     </header>
 
     <section class="panel" id="hud" aria-live="polite">
@@ -72,7 +72,7 @@
       <h2>Cómo usar el visualizador</h2>
       <table>
         <tr><td><kbd>Espacio</kbd></td><td>Reproducir / pausar</td></tr>
-        <tr><td><kbd>←</kbd> <kbd>→</kbd></td><td>Evento anterior / siguiente (Max-Q, MECO, TLI, OPF, NRI…)</td></tr>
+        <tr><td><kbd>←</kbd> <kbd>→</kbd></td><td>Evento anterior / siguiente (Max-Q, MECO, TLI, OPF, NRI, DOI, PDI…)</td></tr>
         <tr><td><kbd>↑</kbd> <kbd>↓</kbd></td><td>Más / menos velocidad de reproducción</td></tr>
         <tr><td><kbd>1</kbd> <kbd>2</kbd> <kbd>3</kbd></td><td>Marco ECI / rotante Tierra–Luna / selenocéntrico</td></tr>
         <tr><td><kbd>N</kbd> <kbd>T</kbd> <kbd>L</kbd></td><td>Enfocar nave / Tierra / Luna</td></tr>
@@ -84,6 +84,14 @@
         Órbita de halo casi rectilínea 9:2 alrededor de L2 (periodo 6,56 d; perilunio ≈ 3 250 km sobre el polo norte,
         apolunio ≈ 71 000 km sobre el polo sur), calculada con <code>periodic_orbits.find_nrho()</code>.
         Es periódica en el marco rotante: actívalo con <kbd>2</kbd> para verla fija.
+      </p>
+      <h3>Descenso al polo sur (HLS)</h3>
+      <p>
+        Poco antes del perilunio de la NRHO el HLS hace la DOI: una elipse con perilunio a 15 km, media vuelta
+        más allá. En el PDI empieza el descenso propulsado con E-guidance (frenado → high gate → aproximación →
+        low gate a 100 m → descenso vertical a 1 m/s), integrado en el marco fijo a la Luna con la gravedad
+        GRGM1200A de GRAIL hasta grado 100. El punto rojo es el sitio de alunizaje (86,8° S). Para verlo, usa
+        <kbd>L</kbd> (foco en la Luna) y el marco selenocéntrico (<kbd>3</kbd>).
       </p>
       <h3>Marcos de referencia</h3>
       <ul>

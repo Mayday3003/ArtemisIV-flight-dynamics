@@ -127,3 +127,15 @@ export function createNrho(scene, frames, nrho) {
   }
   return { line, update };
 }
+
+/** Sitio de alunizaje: fijo a la Luna, dado en el marco rotante (que gira con ella). */
+export function createLandingSite(scene, frames, site) {
+  const mesh = new THREE.Mesh(new THREE.SphereGeometry(0.004, 12, 8), new THREE.MeshBasicMaterial({ color: 0xff5d73 }));
+  scene.add(mesh);
+
+  function update(frame, t, focus) {
+    const r = frames.toFrame(frame, frames.fromRotating(site.position_km, t), t);
+    mesh.position.set(r[0] - focus[0], r[1] - focus[1], r[2] - focus[2]).divideScalar(KM_PER_UNIT);
+  }
+  return { mesh, update };
+}

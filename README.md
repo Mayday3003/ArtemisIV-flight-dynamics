@@ -1,6 +1,6 @@
 # Artemis IV · Simulador de dinámica de vuelo
 
-Simulador numérico en Python de las primeras fases de la misión **Artemis IV** de la NASA con el cohete **SLS Block 1B**: ascenso atmosférico, tránsito Tierra–Luna e inyección translunar (TLI).
+Simulador numérico en Python de la misión **Artemis IV** de la NASA con el cohete **SLS Block 1B**, desde el despegue hasta el alunizaje en el polo sur: ascenso atmosférico, inyección translunar (TLI), llegada a la NRHO de Gateway y descenso del HLS.
 
 Proyecto del Programa de Computación Científica, Universidad de Medellín.
 Autores: Mariana Lopera Correa, Juan José Becerra Bedoya y Daniel Santiago Machado.
@@ -12,8 +12,9 @@ Autores: Mariana Lopera Correa, Juan José Becerra Bedoya y Daniel Santiago Mach
 | 3 · TLI | Problema de valores en la frontera | Método del disparo + Newton-Raphson | Δv = 3 150 m/s en 5 iteraciones |
 | NRHO de Gateway | CR3BP adimensional + matriz de transición de estados | Corrección diferencial + continuación | NRHO 9:2: periodo 6,56 d, perilunio 3 248 km |
 | 4 · TLI → NRHO | Sobrevuelo lunar propulsado (OPF) + inserción (NRI) con Orion | Disparo múltiple + SLSQP | OPF 304 m/s + NRI 174 m/s |
+| 5 · Descenso del HLS al polo sur | Gravedad lunar GRGM1200A (grado 100, Pines) en el marco fijo a la Luna, masa variable | DOP853 con eventos + E-guidance | DOI 702 m/s + descenso 2 297 m/s; contacto a 1 m/s y a 1 cm del sitio (86,8° S) |
 
-El visualizador 3D (Three.js) en [frontend/](frontend/) reproduce las Fases 1–4. La Fase 5 (descenso lunar con el HLS) está planificada en [docs/ROADMAP.md](docs/ROADMAP.md).
+El visualizador 3D (Three.js) en [frontend/](frontend/) reproduce la misión completa (Fases 1–5). La hoja de ruta está en [docs/ROADMAP.md](docs/ROADMAP.md).
 
 ---
 
@@ -36,10 +37,11 @@ pip install -r requirements.txt
 | Correr las pruebas | `python -m pytest` | 75 pruebas en ~30 s |
 | Generar figuras y resultados | `python scripts/generate_figures.py` | `docs/figures/*.png`, `docs/paper/final/figures/*.pdf`, `results.json`, `results.tex` |
 | Familia de halos y NRHO | `python scripts/nrho_figures.py` | `docs/figures/fig09_familia_halo.png` |
-| Exportar la misión para la web | `python scripts/export_mission.py` | `frontend/data/mission.json` (Fases 1–4, ~1,5 MB; tarda ~2,5 min) |
+| Coeficientes de gravedad lunar (ya incluidos) | `python scripts/fetch_grail.py [N]` | `data/grgm1200a_n100.npz` (GRGM1200A del PDS de la NASA) |
+| Exportar la misión para la web | `python scripts/export_mission.py` | `frontend/data/mission.json` (Fases 1–5, ~2,2 MB; tarda ~4 min) |
 | Compilar el informe | `cd docs/paper/final && pdflatex main.tex && pdflatex main.tex` | `main.pdf` |
 | Regenerar la presentación | `cd docs/presentation && npm install && npm run build` | `Artemis_IV_UdeM.pptx` |
-| Abrir el visualizador 3D | `python -m http.server 8000 -d frontend` → http://localhost:8000 | Misión de las Fases 1–4 en el navegador |
+| Abrir el visualizador 3D | `python -m http.server 8000 -d frontend` → http://localhost:8000 | Misión completa (Fases 1–5) en el navegador |
 | Pruebas del visualizador | `node --test frontend/tests/*.test.mjs` | Marcos, interpolación y línea de tiempo |
 | Revisar estilo y tipos | `ruff check src tests scripts && mypy src` | Sin errores |
 
@@ -74,10 +76,13 @@ print(f"Error relativo de energía tras una órbita: {abs(e1 / e0 - 1):.1e}")
 ```text
 ArtemisIV-flight-dynamics/
 ├── src/artemis_sim/        # Paquete del simulador (ver docs/architecture.md)
-├── tests/                  # 75 pruebas automáticas (pytest)
+├── tests/                  # 125 pruebas automáticas (pytest)
 ├── scripts/
 │   ├── generate_figures.py # Figuras y números del informe
+│   ├── nrho_figures.py     # Familia de halos y NRHO
+│   ├── fetch_grail.py      # Descarga los coeficientes GRGM1200A
 │   └── export_mission.py   # Trayectoria de la misión → frontend/data/mission.json
+├── data/                   # Coeficientes de gravedad lunar GRGM1200A (grado 100)
 ├── docs/
 │   ├── ROADMAP.md          # Hoja de ruta: mejoras, Fases 4–5 y visualización 3D
 │   ├── architecture.md     # Arquitectura y decisiones de diseño

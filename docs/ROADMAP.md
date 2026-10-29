@@ -400,7 +400,7 @@ Orion + I-Hab pasa de 36,5 t a 31,3 t; con el I-Hab acoplado el ESM puede dar 83
 
 ---
 
-### Etapa 5: Descenso al polo sur con el HLS (Fase 5 completa)
+### Etapa 5: Descenso al polo sur con el HLS (Fase 5 completa) ✅ (terminada el 2026-10-28)
 **Objetivo:** simular el descenso propulsado desde la NRHO hasta la superficie, con la gravedad lunar real.
 **Tiempo estimado:** 2 a 3 semanas.
 
@@ -422,19 +422,41 @@ Orion + I-Hab pasa de 36,5 t a 31,3 t; con el I-Hab acoplado el ESM puede dar 83
 5. **Masa variable:** ṁ = −T/(Isp·g₀) con los datos del HLS. Integrar con **RK45/DOP853 y eventos** (contacto con la superficie): otra vez un régimen **no conservativo**, igual que el ascenso. **La estructura del proyecto se repite, y es un buen argumento para el informe.**
 
 **Archivos:**
-- [ ] `scripts/fetch_grail.py`: descarga los coeficientes GRGM1200A del PDS y los guarda truncados en `data/grgm1200a_n100.npz`, con su fuente.
-- [ ] `src/artemis_sim/lunar_gravity.py`: Legendre normalizados, potencial y gradiente sin singularidad polar.
-- [ ] `src/artemis_sim/moon_frame.py`: transformación selenocéntrica inercial ↔ fija a la Luna.
-- [ ] `src/artemis_sim/descent_solver.py`: dinámica, guiado polinomial, eventos y `simulate_descent(...)`.
-- [ ] Agregar `HLS` a `constants.py` (con la fuente; los datos públicos son limitados, así que hay que documentar las suposiciones).
+- [x] `scripts/fetch_grail.py`: descarga los coeficientes GRGM1200A del PDS y los guarda truncados en `data/grgm1200a_n100.npz`, con su fuente.
+- [x] `src/artemis_sim/lunar_gravity.py`: Legendre normalizados, potencial y gradiente sin singularidad polar.
+- [x] `src/artemis_sim/moon_frame.py`: transformación selenocéntrica inercial ↔ fija a la Luna.
+- [x] `src/artemis_sim/descent_solver.py`: dinámica, guiado polinomial, eventos y `simulate_descent(...)`.
+- [x] Agregar `HLS` a `constants.py` (con la fuente; los datos públicos son limitados, así que hay que documentar las suposiciones).
 
 **Pruebas:**
-- [ ] Con N = 0, el potencial es exactamente μ/r (masa puntual).
-- [ ] Solo con J₂ (C₂₀), la aceleración coincide con la fórmula analítica de J₂.
-- [ ] El gradiente coincide con diferencias finitas del potencial, también **sobre el polo** (φ = −90°).
-- [ ] Los Legendre normalizados cumplen la normalización (comparar con `scipy.special` hasta n = 20).
-- [ ] El descenso termina con velocidad < 1 m/s, a < 100 m del sitio y con masa > masa seca.
-- [ ] **Mascons visibles:** la desviación de una órbita baja con N = 100 respecto a la de masa puntual es de cientos de metros por órbita. Documentar el número.
+- [x] Con N = 0, el potencial es exactamente μ/r (masa puntual).
+- [x] Solo con J₂ (C₂₀), la aceleración coincide con la fórmula analítica de J₂.
+- [x] El gradiente coincide con diferencias finitas del potencial, también **sobre el polo** (φ = −90°).
+- [x] Los Legendre normalizados cumplen la normalización (comparar con `scipy.special` hasta n = 20).
+- [x] El descenso termina con velocidad < 1 m/s, a < 100 m del sitio y con masa > masa seca.
+- [x] **Mascons visibles:** la desviación de una órbita baja con N = 100 respecto a la de masa puntual es de cientos de metros por órbita. Documentar el número.
+
+**Resultados** (`python scripts/export_mission.py`):
+
+| Tramo | Δv | Duración | Detalle |
+|---|---|---|---|
+| DOI, salida de la NRHO | 702 m/s | impulsiva | 9 min antes del perilunio, a 1 568 km sobre 73,7° N |
+| Planeo por la elipse de descenso | — | 1,59 h | perilunio a 15 km sobre 73,7° S |
+| Descenso propulsado (PDI → contacto) | 2 297 m/s | 700 s | frenado 480 s · aproximación 150 s · vertical 70 s |
+| **Total del HLS** | **≈ 3,0 km/s** | | 370 t → 154,4 t (masa seca 120 t) |
+
+Alunizaje en la región polar sur (86,8° S, 179,0° E) a 1 cm del sitio, a 1,00 m/s y en vertical; el empuje no pasa del 87 %. Los coeficientes GRGM1200A hasta grado 100 (82 KB) están en `data/grgm1200a_n100.npz`.
+
+**Mascons:** una órbita polar de 100 km se separa **2,6 km por vuelta** de la de una Luna puntual y **2,2 km** de la de un modelo con solo J₂ (más de lo que se estimaba en el plan). Con el guiado en lazo cerrado esto no impide aterrizar, pero el perilunio de la elipse de descenso se desplaza unos cientos de metros.
+
+**Cambios respecto al plan:**
+- **Sin LLO intermedia:** se baja directamente desde la NRHO con una DOI, como el Apolo desde su órbita circular. La NRHO tiene el perilunio sobre el norte y la elipse de descenso lleva el periapsis a su antípoda, sobre el sur. La DOI se adelanta 9 minutos para que el PDI quede 480 km antes del sitio (`choose_doi_tau`).
+- **Sitio:** es el punto más austral de la traza sin cambio de plano (la NRHO tiene ~93° de inclinación), dentro de la franja de 6° donde están las regiones candidatas de Artemis III. Como la NRHO es periódica en el marco rotante, que coincide con el fijo a la Luna, la geometría no depende de la fecha.
+- **Guiado:** E-guidance (energía mínima, tiempo final fijo) en tres tramos; G-FOLD queda como extensión.
+- **Marco fijo a la Luna:** se identifica con el rotante del CR3BP girado 180°. Se ignoran la inclinación de 6,7° del eje lunar y la diferencia de ~1 km entre ejes principales y de Tierra media (documentado en `moon_frame.py`).
+- **HLS:** SpaceX no publica datos del Starship HLS: masas, empuje e Isp son supuestos del proyecto y están marcados así en `constants.py`.
+- **En la trayectoria exportada la nave cambia en la DOI:** de Orion (31 t) al HLS (370 t). La masa salta, porque la tripulación pasa al HLS en Gateway.
+- **Pendiente:** la sección del informe con el efecto de los mascons (no se modificó `main.tex`).
 
 **Terminado cuando:** el visualizador, en marco selenocéntrico, muestra el descenso hasta el polo sur, y el informe incluye el efecto de los mascons.
 

@@ -8,10 +8,13 @@ flowchart TB
     A["ascent_solver.py<br/>Fase 1: ascenso"]
     S["symplectic_solver.py<br/>Fase 2: tránsito"]
     T["shooting_method.py<br/>Fase 3: TLI"]
+    D["descent_solver.py<br/>Fase 5: descenso del HLS"]
   end
   subgraph Fisica["Capa 2 · Física"]
     P["physics_engine.py<br/>gravedad, atmósfera, arrastre, empuje"]
     E["ephemeris.py<br/>posición de la Luna"]
+    G["lunar_gravity.py<br/>armónicos GRGM1200A"]
+    M["moon_frame.py<br/>marco fijo a la Luna"]
   end
   subgraph Datos["Capa 1 · Datos"]
     C["constants.py<br/>Tierra, Luna, etapas SLS"]
@@ -26,6 +29,9 @@ flowchart TB
   T --> S
   T --> E
   E --> C
+  D --> G
+  D --> M
+  D --> C
   P -.-> C
 ```
 
@@ -33,7 +39,7 @@ flowchart TB
 
 | Módulo | Responsabilidad | Funciones y clases principales |
 |---|---|---|
-| `constants.py` | Constantes físicas inmutables y validadas | `CelestialBody`, `StageSpec`, `EARTH`, `MOON`, `SLS_B1B_*` |
+| `constants.py` | Constantes físicas inmutables y validadas | `CelestialBody`, `StageSpec`, `EARTH`, `MOON`, `SLS_B1B_*`, `ORION`, `HLS` |
 | `state.py` | Vector de estado `[x, y, z, vx, vy, vz, m]` inmutable | `ArtemisState` |
 | `physics_engine.py` | Funciones físicas puras (sin estado) | `compute_gravity`, `compute_aerodynamic_drag`, `compute_thrust`, `compute_mach_number`, `compute_drag_coefficient` |
 | `ephemeris.py` | Órbita lunar circular con movimiento medio kepleriano | `get_body_position`, `get_body_velocity`, `LUNAR_MEAN_MOTION_RAD_S` |
@@ -44,7 +50,10 @@ flowchart TB
 | `periodic_orbits.py` | Halos L2 por corrección diferencial y continuación; NRHO 9:2 de Gateway | `correct_halo`, `continue_family`, `find_nrho` |
 | `multiple_shooting.py` | Disparo múltiple: nodos, continuidad (con nodos de encendido), jacobiano por bloques con la STM, Newton de mínima norma | `MultipleShooting`, `newton_min_norm` |
 | `nrho_transfer.py` | Transferencia TLI → OPF → NRI: semillas hacia atrás desde la NRHO, homotopía y SLSQP | `backward_seeds`, `design_transfer`, `optimize_nrho_transfer`, `refine_transfer` |
-| `mission.py` | Encadena las fases (ascenso → aparcamiento → TLI → OPF → NRI → NRHO) con la ventana de lanzamiento | `build_mission_phases_1_to_3`, `build_mission_phases_1_to_4` |
+| `lunar_gravity.py` | Gravedad lunar en armónicos esféricos (GRGM1200A hasta grado 100): Legendre normalizados por recurrencia estable y gradiente de Pines, sin singularidad en los polos | `LunarGravityField`, `helmholtz_polynomials` |
+| `moon_frame.py` | Marco selenocéntrico fijo a la Luna (rotante del CR3BP girado 180°) ↔ ECI; latitud y longitud | `rotating_to_moon_fixed`, `moon_fixed_to_eci`, `eci_to_moon_fixed`, `surface_point` |
+| `descent_solver.py` | Descenso del HLS: dinámica con Coriolis, centrífuga y marea terrestre; DOI, E-guidance en tres tramos y evento de contacto | `MoonFixedDynamics`, `choose_doi_tau`, `e_guidance`, `simulate_descent` |
+| `mission.py` | Encadena las fases (ascenso → aparcamiento → TLI → OPF → NRI → NRHO → DOI → alunizaje) con la ventana de lanzamiento | `build_mission_phases_1_to_3`, `build_mission_phases_1_to_4`, `build_mission_phases_1_to_5` |
 | `export.py` | Remuestreo con Hermite cúbico y exportación a JSON por columnas para la web | `MissionTrajectory`, `resample`, `to_json`, `from_json` |
 
 ## Flujo de un cálculo completo

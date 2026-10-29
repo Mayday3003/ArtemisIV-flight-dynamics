@@ -5,7 +5,8 @@ import pytest
 
 from artemis_sim.constants import G0_M_S2, ORION, SLS_B1B_EUS
 from artemis_sim.cr3bp import UNITS, propagate, rotating_to_eci
-from artemis_sim.mission import MissionSummaryPhase4, build_mission_phases_1_to_4
+from artemis_sim.export import MissionTrajectory
+from artemis_sim.mission import MissionSummaryPhase4, MissionSummaryPhase5
 from artemis_sim.multiple_shooting import MultipleShooting, newton_min_norm
 from artemis_sim.shooting_method import make_dop853_propagator
 
@@ -56,8 +57,18 @@ class TestMultipleShooting:
 
 
 @pytest.fixture(scope="module")
-def mission4() -> tuple[object, MissionSummaryPhase4]:
-    return build_mission_phases_1_to_4()
+def mission4(
+    mission5: tuple[MissionTrajectory, MissionSummaryPhase5],
+) -> tuple[MissionTrajectory, MissionSummaryPhase4]:
+    """Fases 1–4 de la misión completa: todo lo anterior a la DOI del HLS."""
+    traj, s = mission5
+    before = traj.t < s.t_doi_s
+    return (
+        MissionTrajectory(
+            traj.t[before], traj.y[:, before], traj.phases[:4], traj.events, traj.lunar_config
+        ),
+        s.phases_1_to_4,
+    )
 
 
 class TestNrhoTransfer:

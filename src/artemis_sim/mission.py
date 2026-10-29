@@ -1,7 +1,9 @@
-"""Encadena las fases en una sola trayectoria continua: ascenso → aparcamiento → TLI → NRHO.
+"""Encadena las fases en una sola trayectoria continua: ascenso → aparcamiento → TLI → NRHO
+→ descenso al polo sur.
 
 `build_mission_phases_1_to_3` llega hasta el sobrevuelo lunar de la Fase 3;
-`build_mission_phases_1_to_4` sigue con el OPF y la inserción en la NRHO de Gateway.
+`build_mission_phases_1_to_4` sigue con el OPF y la inserción en la NRHO de Gateway;
+`build_mission_phases_1_to_5` añade el descenso del HLS hasta la superficie.
 
 Secuencia física:
 1. Ascenso real desde el LC-39B hasta el MECO (`simulate_full_ascent`).
@@ -30,14 +32,17 @@ from artemis_sim.constants import (
     EARTH,
     EARTH_ROTATION,
     G0_M_S2,
+    HLS,
     I_HAB_MASS_KG,
     MOON,
     ORION,
     SLS_B1B_EUS,
 )
 from artemis_sim.cr3bp import MU, UNITS, eci_to_rotating, propagate, rotating_to_eci
+from artemis_sim.descent_solver import DescentResult, choose_doi_tau, simulate_descent
 from artemis_sim.ephemeris import LUNAR_MEAN_MOTION_RAD_S, LunarOrbitConfig, get_body_position
 from artemis_sim.export import MissionEvent, MissionPhase, MissionTrajectory, concatenate_segments
+from artemis_sim.moon_frame import eci_to_moon_fixed, moon_fixed_to_eci
 from artemis_sim.nrho_transfer import (
     NrhoTransfer,
     departure_angle,
@@ -267,8 +272,12 @@ def _orion_burn_mass(mass_kg: float, dv_m_s: float) -> float:
 
 def build_mission_phases_1_to_4(
     nrho_revolutions: float = 1.0,
+    end_at_tau: float | None = None,
 ) -> tuple[MissionTrajectory, MissionSummaryPhase4]:
     """Misión continua despegue → aparcamiento → TLI → OPF → NRI → NRHO.
+
+    En la NRHO se dan `nrho_revolutions` vueltas; con `end_at_tau` se sigue después hasta la
+    siguiente vez que la NRHO pasa por esa fase τ (lo usa la Fase 5 para la DOI).
 
     1. Se construyen las Fases 1–3 (dan la TLI semilla y la geometría de la ventana).
     2. Se optimiza la transferencia TLI → OPF → NRI en el CR3BP (`optimize_nrho_transfer`).
@@ -317,7 +326,10 @@ def build_mission_phases_1_to_4(
         t_nd += float(dt)
     t_opf = t_tli + tr.flyby_time * UNITS.time_s
     t_nri = t_tli + tr.time_of_flight * UNITS.time_s
-    orbit_prop = propagate(tr.nrho_state, nrho_revolutions * nrho.period, dense_points=8000)
+    revolutions = nrho_revolutions
+    if end_at_tau is not None:
+        revolutions += (end_at_tau - tr.tau) % 1.0
+    orbit_prop = propagate(tr.nrho_state, revolutions * nrho.period, dense_points=8000)
     segments.append(_rotating_segment(orbit_prop.t, orbit_prop.states, t_nri, m_nri, lunar))
 
     t_all, y_all = concatenate_segments(segments)
@@ -333,8 +345,11 @@ def build_mission_phases_1_to_4(
         MissionEvent(t_tli, "Inyección translunar (TLI) y separación de la EUS"),
         MissionEvent(t_opf, "Sobrevuelo lunar propulsado (OPF)"),
         MissionEvent(t_nri, "Inserción en la NRHO (NRI)"),
-        MissionEvent(float(t_all[-1]), f"Fin: {nrho_revolutions:g} vuelta(s) a la NRHO"),
     ]
+    if end_at_tau is None:
+        events.append(
+            MissionEvent(float(t_all[-1]), f"Fin: {nrho_revolutions:g} vuelta(s) a la NRHO")
+        )
     traj = MissionTrajectory(t_all, y_all, phases, events, lunar)
 
     moon = np.array([1.0 - MU, 0.0, 0.0])
@@ -358,4 +373,60 @@ def build_mission_phases_1_to_4(
         transfer=tr,
         nrho=nrho,
     )
+    return traj, summary
+
+
+@dataclass(frozen=True, slots=True)
+class MissionSummaryPhase5:
+    """Valores clave de la misión completa hasta el alunizaje (SI)."""
+
+    phases_1_to_4: MissionSummaryPhase4
+    t_doi_s: float
+    t_pdi_s: float
+    t_touchdown_s: float
+    descent: DescentResult
+
+
+def build_mission_phases_1_to_5(
+    nrho_revolutions: float = 1.0,
+) -> tuple[MissionTrajectory, MissionSummaryPhase5]:
+    """Misión completa: … → NRHO → DOI → planeo → descenso propulsado → polo sur.
+
+    Tras `nrho_revolutions` vueltas en la NRHO (acoplamiento con Gateway y paso de la
+    tripulación al HLS), el HLS hace la DOI en la fase τ que elige `choose_doi_tau`. Desde ahí
+    la nave que sigue la trayectoria es el HLS: la columna de masa salta a la suya.
+    """
+    nrho_tau = choose_doi_tau(find_nrho())
+    traj4, summ4 = build_mission_phases_1_to_4(nrho_revolutions, end_at_tau=nrho_tau)
+    lunar = traj4.lunar_config
+    t_doi = float(traj4.t[-1])
+    st_doi = ArtemisState(traj4.y[0:3, -1], traj4.y[3:6, -1], 1.0, t_doi)
+    descent = simulate_descent(eci_to_moon_fixed(st_doi, lunar))
+
+    t = t_doi + descent.t
+    y = np.empty((7, t.size))
+    for i in range(t.size):
+        st = moon_fixed_to_eci(descent.y[0:6, i], float(t[i]), lunar)
+        y[0:3, i], y[3:6, i], y[6, i] = st.position, st.velocity, descent.y[6, i]
+    t_all, y_all = concatenate_segments([(traj4.t, traj4.y), (t, y)])
+
+    t_pdi, t_land = t_doi + descent.t_pdi, t_doi + descent.t_touchdown
+    phases = traj4.phases[:-1] + [
+        MissionPhase("nrho", "NRHO de Gateway", traj4.phases[-1].t_start, t_doi),
+        MissionPhase("descent", "Órbita de descenso (HLS)", t_doi, t_pdi),
+        MissionPhase("landing", "Descenso propulsado (HLS)", t_pdi, t_land),
+    ]
+    gates = descent.gate_times
+    events = traj4.events + [
+        MissionEvent(t_doi, "Inserción en la órbita de descenso (DOI, HLS)"),
+        MissionEvent(t_pdi, "Inicio del descenso propulsado (PDI)"),
+        MissionEvent(t_doi + gates["Frenado"], "High gate: fin del frenado"),
+        MissionEvent(t_doi + gates["Aproximación"], "Low gate: 100 m sobre el sitio"),
+        MissionEvent(t_land, f"Alunizaje: {descent.site.name}"),
+    ]
+    traj = MissionTrajectory(t_all, y_all, phases, events, lunar)
+    summary = MissionSummaryPhase5(
+        phases_1_to_4=summ4, t_doi_s=t_doi, t_pdi_s=t_pdi, t_touchdown_s=t_land, descent=descent
+    )
+    assert descent.mass_initial_kg == HLS.total_mass_kg
     return traj, summary
