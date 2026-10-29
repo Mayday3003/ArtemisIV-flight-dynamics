@@ -73,6 +73,30 @@ class TestSrbMassBalance:
         assert 140e3 < alt < 180e3
         assert np.all(np.diff(res.t) >= 0.0)
 
+    def test_three_g_limit_and_inertial_plane(self) -> None:
+        """Con los RS-25 estrangulados el empuje no pasa de 3 g (antes 3,5 g), y con el plano
+        de vuelo inercial la inclinación queda cerca de la latitud de lanzamiento (28,6°)."""
+        res = simulate_full_ascent()
+        dm = -np.diff(res.y[6]) / np.diff(res.t)
+        cfg = AscentConfig(phase=AscentPhase.CORE_ONLY)
+        f = make_ascent_derivatives(cfg)
+        after = res.t > res.t_srb_separation_s + 1.0
+        def thrust_and_drag(t: float, y: np.ndarray) -> float:
+            gravity = -EARTH.mu_m3_s2 * y[0:3] / np.linalg.norm(y[0:3]) ** 3
+            return float(np.linalg.norm(f(t, y)[3:6] - gravity))
+
+        accel = np.array(
+            [
+                thrust_and_drag(t, y)
+                for t, y in zip(res.t[after][:-1], res.y[:, after][:, :-1].T, strict=True)
+            ]
+        )
+        assert np.max(accel) < 3.0 * G0_M_S2 * 1.01
+        assert np.all(dm[after[1:]] > 0.0)
+        r, v = res.y[0:3, -1], res.y[3:6, -1]
+        h = np.cross(r, v)
+        assert np.degrees(np.arccos(h[2] / np.linalg.norm(h))) < 30.0
+
     def test_mass_monotonic_during_ascent(self) -> None:
         cfg = AscentConfig()
         f = make_ascent_derivatives(cfg)

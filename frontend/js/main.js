@@ -6,6 +6,7 @@ import { createHud } from "./hud.js";
 import { hermiteState, toTypedSamples } from "./interpolate.js";
 import { KM_PER_UNIT, createScene, mul3, rotZ, setMatrix } from "./scene.js";
 import { createTimeline } from "./timeline.js";
+import { createTour } from "./tour.js";
 import { createLandingSite, createMoonOrbit, createNrho, createTrajectory } from "./trajectory.js";
 
 const $ = (id) => document.getElementById(id);
@@ -73,10 +74,10 @@ async function main() {
   const focusSelect = $("focus");
   focusSelect.addEventListener("change", () => setFocus(focusSelect.value));
 
-  function setFocus(key) {
+  function setFocus(key, distance) {
     state.focus = key;
     focusSelect.value = key;
-    const dist = key === "ship" && state.t < mission.phases[0].t_end ? 0.6 : FOCUS_DISTANCE[key];
+    const dist = distance ?? (key === "ship" && state.t < mission.phases[0].t_end ? 0.6 : FOCUS_DISTANCE[key]);
     const dir = camera.position.clone().sub(controls.target);
     if (dir.lengthSq() === 0) dir.set(1, -1, 0.5);
     controls.target.set(0, 0, 0);
@@ -96,6 +97,27 @@ async function main() {
     apply(box.checked);
     box.addEventListener("change", () => apply(box.checked));
   }
+
+  // Modo presentación: una toma por fase, de principio a fin
+  const tourBtn = $("tour-btn");
+  const tour = createTour(mission.phases, (shot, phase) => {
+    setFrame(shot.frame);
+    setFocus(shot.focus, shot.distance);
+    timeline.setSpeedIndex(shot.speed);
+    hud.toast(phase.name);
+  });
+  function toggleTour() {
+    if (tour.active) {
+      tour.stop();
+    } else {
+      timeline.seek(0);
+      tour.start();
+      if (!state.playing) timeline.togglePlay();
+    }
+    tourBtn.setAttribute("aria-pressed", String(tour.active));
+    tourBtn.textContent = tour.active ? "Detener presentación (P)" : "Presentación (P)";
+  }
+  tourBtn.addEventListener("click", toggleTour);
 
   const help = $("help");
   $("help-btn").addEventListener("click", () => help.showModal());
@@ -124,6 +146,7 @@ async function main() {
       t: () => setFocus("earth"),
       l: () => setFocus("moon"),
       h: () => (help.open ? help.close() : help.showModal()),
+      p: () => toggleTour(),
     };
     const fn = actions[e.key.length === 1 ? e.key.toLowerCase() : e.key];
     if (fn) {
@@ -149,6 +172,8 @@ async function main() {
     const dt = Math.min((now - last) / 1000, 0.1);
     last = now;
     timeline.tick(dt);
+    tour.update(state.t);
+    if (tour.active && !state.playing) toggleTour(); // terminó la misión o el usuario pausó
 
     const { t, frame } = state;
     const st = hermiteState(samples, t);

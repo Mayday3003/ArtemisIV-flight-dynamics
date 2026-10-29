@@ -156,9 +156,9 @@ def linear_tangent_direction(
     t_kick: float = 10.0,
     pitch_angle_rad: float = 0.02,
     t_guidance: float = 126.0,
-    t_final: float = 480.0,
-    theta_start_rad: float = 0.4915,
-    theta_end_rad: float = 0.1548,
+    t_final: float = 482.2345,
+    theta_start_rad: float = 0.49290512,
+    theta_end_rad: float = 0.15295935,
     azimuth_rad: float = 1.5707963267948966,
 ) -> ThrustDirection:
     """Programa de guiado de dos tramos: giro por gravedad atmosférico + ley de tangente lineal.
@@ -171,13 +171,14 @@ def linear_tangent_direction(
           tau = (t - t_guidance) / (t_final - t_guidance) in [0, 1],
       que es la solución óptima (máximo de velocidad final) para empuje en vacío y gravedad
       uniforme (problema de Lawden / guiado PEG del Space Shuttle).
-      El plano de vuelo se define con la dirección horizontal de la velocidad relativa.
+      El plano de vuelo se define con la dirección horizontal de la velocidad inercial.
 
     Los valores por defecto de theta_0 y theta_f se obtuvieron resolviendo (fsolve) las
     condiciones de MECO h = 160 km y ángulo de trayectoria gamma = 0 con la configuración
-    nominal (ver scripts/generate_figures.py).
+    nominal: US76 por capas, límite de 3 g y plano de vuelo inercial (MECO a 482,2 s).
     """
     atmospheric = pitch_kick_direction(t_kick, pitch_angle_rad, azimuth_rad)
+    omega_earth = np.array([0.0, 0.0, EARTH_ROTATION.omega_rad_s])
     tan_0 = float(np.tan(theta_start_rad))
     tan_f = float(np.tan(theta_end_rad))
 
@@ -189,7 +190,10 @@ def linear_tangent_direction(
         if t < t_guidance:
             return atmospheric(t, position, v_rel)
         r_unit = position / float(np.linalg.norm(position))
-        v_horiz = v_rel - float(np.dot(v_rel, r_unit)) * r_unit
+        # Fuera de la atmósfera el plano de vuelo se fija con la velocidad INERCIAL: con la
+        # relativa el empuje seguiría el "este local" y la inclinación derivaría (28,6° → 31,7°).
+        v_inertial = v_rel + np.cross(omega_earth, position)
+        v_horiz = v_inertial - float(np.dot(v_inertial, r_unit)) * r_unit
         h_norm = float(np.linalg.norm(v_horiz))
         if h_norm == 0.0:
             return r_unit
@@ -199,6 +203,11 @@ def linear_tangent_direction(
         return np.asarray(np.cos(theta) * h_unit + np.sin(theta) * r_unit, dtype=np.float64)
 
     return _direction_func
+
+
+# Los RS-25 operan entre el 67 % y el 109 % del nivel de potencia nominal; `thrust_vac_n` es el
+# empuje al 109 %, así que el mínimo es 67/109 de ese valor.
+RS25_MIN_THROTTLE: float = 67.0 / 109.0
 
 
 class AscentPhase(Enum):
@@ -237,6 +246,9 @@ class AscentConfig:
         Función que determina el vector unitario de empuje.
     phase : AscentPhase
         Fase actual del ascenso ('BOOSTERS_AND_CORE' o 'CORE_ONLY').
+    max_accel_g : float | None
+        Límite de la aceleración por empuje en g0 (3 g, como el SLS real). Los RS-25 se
+        estrangulan para no pasarlo; los SRB no se pueden estrangular. None: sin límite.
     """
 
     srb_spec: StageSpec = SLS_B1B_SRB_PAIR
@@ -250,6 +262,7 @@ class AscentConfig:
     srb_exit_area_m2: float = 21.0  # TODO: verificar área de salida acumulada de 2x 5-segment SRB
     thrust_direction_fn: ThrustDirection = radial_direction
     phase: AscentPhase = AscentPhase.BOOSTERS_AND_CORE
+    max_accel_g: float | None = 3.0  # límite de aceleración por empuje (None: sin límite)
 
     @property
     def cutoff_mass_kg(self) -> float:
@@ -274,7 +287,7 @@ def make_ascent_derivatives(
 
     Detalles de física:
     - Altitud: h = ||r|| - R_E.
-    - Presión y densidad: modelos exponenciales según la altitud h.
+    - Presión y densidad: US Standard Atmosphere 1976 por capas.
     - Velocidad relativa: v_rel = v - omega_E x r.
     - Empuje: se computa según los motores activos en la fase (SRB + Core o solo Core).
       Los SRB siguen el perfil regresivo `SRB_THRUST_PROFILE`, escalado para que la masa
@@ -284,6 +297,8 @@ def make_ascent_derivatives(
     - Arrastre: F_drag = -0.5 * rho * Cd * A * ||v_rel|| * v_rel (nulo si h > 100 000 m).
     - Gravedad: masa puntual pura -mu * r / ||r||^3.
     - Aceleración: a = (T_total * u + F_drag) / m + g.
+    - Estrangulamiento: los RS-25 bajan su empuje (67–109 % del nominal, es decir, 61–100 % del
+      valor de `thrust_vac_n`) para que T_total / m no pase de `max_accel_g` g0.
     """
     mu_earth = EARTH.mu_m3_s2
     r_earth = EARTH.equatorial_radius_m
@@ -316,15 +331,6 @@ def make_ascent_derivatives(
         dm_dt = 0.0
 
         if m > cutoff_mass:
-            # Core Stage activo
-            t_core = compute_thrust(
-                config.core_spec.thrust_vac_n,
-                config.core_exit_area_m2,
-                p_a,
-            )
-            t_thrust_total += t_core
-            dm_dt += core_mass_flow
-
             # Boosters (SRB) activos solo si estamos en la fase respectiva y t < t_burn_srb
             if srb_active_phase:
                 srb_vac = srb_scale * srb_thrust_fraction(t, config.t_burn_srb_s) * (
@@ -333,6 +339,22 @@ def make_ascent_derivatives(
                 if srb_vac > 0.0:
                     t_thrust_total += compute_thrust(srb_vac, config.srb_exit_area_m2, p_a)
                     dm_dt += compute_mass_flow(srb_vac, config.srb_spec.isp_vac_s, G0_M_S2)
+
+            # Core Stage activo, estrangulado si el empuje total superaría el límite de g
+            throttle = 1.0
+            if config.max_accel_g is not None:
+                t_allowed = config.max_accel_g * G0_M_S2 * m - t_thrust_total
+                t_full = compute_thrust(
+                    config.core_spec.thrust_vac_n, config.core_exit_area_m2, p_a
+                )
+                throttle = float(np.clip(t_allowed / t_full, RS25_MIN_THROTTLE, 1.0))
+            t_core = compute_thrust(
+                throttle * config.core_spec.thrust_vac_n,
+                config.core_exit_area_m2,
+                p_a,
+            )
+            t_thrust_total += t_core
+            dm_dt += throttle * core_mass_flow
 
         # 3. Dirección unitaria del empuje
         u_thrust = config.thrust_direction_fn(t, pos, v_rel)
@@ -578,6 +600,7 @@ def simulate_full_ascent(
         srb_exit_area_m2=cfg_base.srb_exit_area_m2,
         thrust_direction_fn=direction,
         phase=AscentPhase.BOOSTERS_AND_CORE,
+        max_accel_g=cfg_base.max_accel_g,
     )
     cfg_2 = AscentConfig(
         srb_spec=cfg_1.srb_spec,
@@ -591,6 +614,7 @@ def simulate_full_ascent(
         srb_exit_area_m2=cfg_1.srb_exit_area_m2,
         thrust_direction_fn=direction,
         phase=AscentPhase.CORE_ONLY,
+        max_accel_g=cfg_1.max_accel_g,
     )
 
     state_0 = initial_state_on_pad(latitude_deg, longitude_deg, cfg_1)

@@ -48,8 +48,6 @@ from artemis_sim.ephemeris import (
     get_body_velocity,
 )
 from artemis_sim.physics_engine import (
-    H_P_M,
-    H_RHO_M,
     P0_PA,
     RHO0_KG_M3,
     compute_aerodynamic_drag,
@@ -110,9 +108,7 @@ __all__ = [
     "ArtemisState",
     # Física pura
     "RHO0_KG_M3",
-    "H_RHO_M",
     "P0_PA",
-    "H_P_M",
     "compute_gravity",
     "compute_altitude",
     "compute_atmospheric_density",

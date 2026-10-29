@@ -96,6 +96,11 @@ export function createTimeline(dom, mission, state, onEvent) {
     dom.speed.value = String(state.speedIndex);
   }
 
+  function setSpeedIndex(i) {
+    state.speedIndex = Math.min(Math.max(i, 0), SPEEDS.length - 1);
+    dom.speed.value = String(state.speedIndex);
+  }
+
   /** Salta al evento anterior/siguiente (dir = ±1). */
   function jumpEvent(dir) {
     const eps = 1e-3;
@@ -115,5 +120,5 @@ export function createTimeline(dom, mission, state, onEvent) {
   }
 
   syncSlider();
-  return { tick, seek, togglePlay, setSpeed, jumpEvent, tEnd };
+  return { tick, seek, togglePlay, setSpeed, setSpeedIndex, jumpEvent, tEnd };
 }

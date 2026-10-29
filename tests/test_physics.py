@@ -7,8 +7,6 @@ from scipy.integrate import solve_ivp
 
 from artemis_sim.constants import EARTH, EARTH_ROTATION, G0_M_S2
 from artemis_sim.physics_engine import (
-    H_P_M,
-    H_RHO_M,
     P0_PA,
     RHO0_KG_M3,
     compute_aerodynamic_drag,
@@ -26,31 +24,30 @@ from artemis_sim.physics_engine import (
 class TestPhysicsEngine:
     """Verificación de funciones físicas puras."""
 
-    def test_density_at_sea_level_and_scale_height(self) -> None:
-        """Densidad en h=0 es 1.225 y decae con factor e en h=H."""
-        rho_0 = compute_atmospheric_density(0.0)
-        assert pytest.approx(rho_0, rel=1e-6) == RHO0_KG_M3
-        assert pytest.approx(rho_0, rel=1e-6) == 1.225
+    @pytest.mark.parametrize(
+        ("h_m", "p_pa", "rho_kg_m3"),
+        [  # Tabla oficial de la US Standard Atmosphere 1976 (altitud geopotencial)
+            (0.0, 101_325.0, 1.2250),
+            (11_000.0, 22_632.1, 0.36392),
+            (20_000.0, 5_474.89, 0.088035),
+            (32_000.0, 868.019, 0.013225),
+            (47_000.0, 110.906, 0.0014275),
+            (71_000.0, 3.95642, 6.4211e-5),
+        ],
+    )
+    def test_us76_pressure_and_density(self, h_m: float, p_pa: float, rho_kg_m3: float) -> None:
+        assert compute_atmospheric_pressure(h_m) == pytest.approx(p_pa, rel=2e-5)
+        assert compute_atmospheric_density(h_m) == pytest.approx(rho_kg_m3, rel=2e-4)
 
-        rho_h = compute_atmospheric_density(H_RHO_M)
-        assert pytest.approx(rho_h, rel=1e-6) == 1.225 / np.e
+    def test_atmosphere_saturates_below_sea_level(self) -> None:
+        assert compute_atmospheric_density(-100.0) == pytest.approx(RHO0_KG_M3, rel=1e-6)
+        assert compute_atmospheric_pressure(-50.0) == P0_PA
 
-        # Saturación en altitud negativa
-        rho_neg = compute_atmospheric_density(-100.0)
-        assert rho_neg == RHO0_KG_M3
-
-    def test_pressure_at_sea_level_and_scale(self) -> None:
-        """Presión en h=0 es 101325 Pa y decae con factor e en h=H_p."""
-        p_0 = compute_atmospheric_pressure(0.0)
-        assert pytest.approx(p_0, rel=1e-6) == P0_PA
-        assert pytest.approx(p_0, rel=1e-6) == 101325.0
-
-        p_h = compute_atmospheric_pressure(H_P_M)
-        assert pytest.approx(p_h, rel=1e-6) == 101325.0 / np.e
-
-        # Saturación en altitud negativa
-        p_neg = compute_atmospheric_pressure(-50.0)
-        assert p_neg == P0_PA
+    def test_atmosphere_is_continuous_and_decreasing(self) -> None:
+        h = np.linspace(0.0, 120e3, 2401)
+        p = np.array([compute_atmospheric_pressure(x) for x in h])
+        assert np.all(np.diff(p) < 0.0)
+        assert np.max(np.abs(np.diff(np.log(p)))) < 0.01  # sin saltos entre capas
 
     def test_gravity_at_surface(self) -> None:
         """Gravedad en r=R_E: mu/R_E^2 ≈ 9.80 m/s^2 (tolerancia 0.02) hacia el origen."""

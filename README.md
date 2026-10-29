@@ -36,6 +36,7 @@ pip install -r requirements.txt
 |---|---|---|
 | Correr las pruebas | `python -m pytest` | 75 pruebas en ~30 s |
 | Generar figuras y resultados | `python scripts/generate_figures.py` | `docs/figures/*.png`, `docs/paper/final/figures/*.pdf`, `results.json`, `results.tex` |
+| **Todo de una vez** | `python scripts/run_mission.py` | Figuras fig01–fig12, `results*.tex`, `results.json` y `mission.json` (~8 min) |
 | Familia de halos y NRHO | `python scripts/nrho_figures.py` | `docs/figures/fig09_familia_halo.png` |
 | Coeficientes de gravedad lunar (ya incluidos) | `python scripts/fetch_grail.py [N]` | `data/grgm1200a_n100.npz` (GRGM1200A del PDS de la NASA) |
 | Exportar la misión para la web | `python scripts/export_mission.py` | `frontend/data/mission.json` (Fases 1–5, ~2,2 MB; tarda ~4 min) |
@@ -76,9 +77,10 @@ print(f"Error relativo de energía tras una órbita: {abs(e1 / e0 - 1):.1e}")
 ```text
 ArtemisIV-flight-dynamics/
 ├── src/artemis_sim/        # Paquete del simulador (ver docs/architecture.md)
-├── tests/                  # 125 pruebas automáticas (pytest)
+├── tests/                  # 132 pruebas automáticas (pytest)
 ├── scripts/
-│   ├── generate_figures.py # Figuras y números del informe
+│   ├── run_mission.py      # Un solo comando: misión, figuras, informe y visualizador
+│   ├── generate_figures.py # Figuras y números de las Fases 1–3
 │   ├── nrho_figures.py     # Familia de halos y NRHO
 │   ├── fetch_grail.py      # Descarga los coeficientes GRGM1200A
 │   └── export_mission.py   # Trayectoria de la misión → frontend/data/mission.json

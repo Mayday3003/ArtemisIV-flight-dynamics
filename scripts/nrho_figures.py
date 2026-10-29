@@ -2,7 +2,8 @@
 
 Uso (desde la raíz del repositorio):
     python scripts/nrho_figures.py
-Escribe docs/figures/fig09_familia_halo.png.
+Escribe docs/figures/fig09_familia_halo.png y, para el informe,
+docs/paper/final/figures/fig09_familia_halo.pdf.
 """
 
 from __future__ import annotations
@@ -21,6 +22,7 @@ from artemis_sim.cr3bp import MU, UNITS, lagrange_points  # noqa: E402
 from artemis_sim.periodic_orbits import continue_family, find_nrho  # noqa: E402
 
 OUT = ROOT / "docs" / "figures" / "fig09_familia_halo.png"
+OUT_PDF = ROOT / "docs" / "paper" / "final" / "figures" / "fig09_familia_halo.pdf"
 
 
 def main() -> None:
@@ -60,6 +62,8 @@ def main() -> None:
     fig.suptitle("Familia de órbitas de halo L2 sur (marco rotante, centrado en la Luna)")
     OUT.parent.mkdir(parents=True, exist_ok=True)
     fig.savefig(OUT, dpi=200)
+    OUT_PDF.parent.mkdir(parents=True, exist_ok=True)
+    fig.savefig(OUT_PDF)
     print(f"Figura: {OUT.relative_to(ROOT)}")
 
 

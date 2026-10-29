@@ -18,12 +18,12 @@ from __future__ import annotations
 import numpy as np
 import numpy.typing as npt
 
-# Constantes estándar para el modelo atmosférico exponencial
+from artemis_sim.constants import G0_M_S2
+
+# Valores de la atmósfera al nivel del mar (US Standard Atmosphere 1976)
 RHO0_KG_M3: float = 1.225  # Densidad a nivel del mar (US Standard Atmosphere 1976)
-H_RHO_M: float = 8500.0  # Altura de escala de densidad (m)
 
 P0_PA: float = 101325.0  # Presión a nivel del mar estándar (Pa)
-H_P_M: float = 7200.0  # Altura de escala de presión barométrica (m)
 
 
 def compute_gravity(
@@ -88,19 +88,12 @@ def compute_altitude(
 def compute_atmospheric_density(
     altitude_m: float,
 ) -> float:
-    """Calcula la densidad atmosférica según un modelo exponencial isotérmico.
+    """Densidad de la US Standard Atmosphere 1976 por capas: ρ = p / (R T).
 
-    rho(h) = rho0 * exp(-h / H)
-    - rho0 = 1.225 kg/m^3 (nivel medio del mar).
-    - H = 8500.0 m (altura de escala aproximada).
-
-    Rango de validez y saturación:
-    - Válido como primera aproximación para la troposfera y estratosfera (0 <= h <= 100 km).
-    - Para altitudes negativas (h < 0, p. ej. depresiones o ligeras fluctuaciones numéricas),
-      se satura a rho0 (o se evalúa en h >= 0) para evitar densidades hiper-bajas o anomalías.
-      Si h < 0, devuelve rho0 = 1.225 kg/m^3.
-    - Para h > 100 km, la densidad cae a menos de 1e-5 kg/m^3, haciendo que el arrastre sea
-      despreciable frente al empuje y la gravedad.
+    Usa la presión hidrostática de `compute_atmospheric_pressure` y la temperatura de
+    `compute_atmospheric_temperature` (la misma tabla de capas). Antes era un modelo
+    exponencial con H = 8,5 km, que se equivocaba ~20 % por encima de 30 km.
+    Para h < 0 se satura en el valor del nivel del mar (1,225 kg/m³).
 
     Parámetros
     ----------
@@ -112,26 +105,22 @@ def compute_atmospheric_density(
     float
         Densidad atmosférica en kg/m^3.
     """
-    if altitude_m < 0.0:
-        return RHO0_KG_M3
-    return float(RHO0_KG_M3 * np.exp(-altitude_m / H_RHO_M))
+    return compute_atmospheric_pressure(altitude_m) / (
+        R_AIR_J_KG_K * compute_atmospheric_temperature(altitude_m)
+    )
 
 
 def compute_atmospheric_pressure(
     altitude_m: float,
 ) -> float:
-    """Calcula la presión atmosférica estática ambiental según un modelo exponencial.
+    """Presión estática de la US Standard Atmosphere 1976 por capas (equilibrio hidrostático).
 
-    p(h) = p0 * exp(-h / H_p)
-    - p0 = 101325.0 Pa (1 atm estándar a nivel del mar).
-    - H_p = 7200.0 m.
-      Justificación: La altura de escala barométrica típica para la atmósfera inferior media
-      (R_aire * T_media / g0 ≈ 287 * 250 / 9.80665 ≈ 7300 m) se aproxima en 7200 m para
-      reproducir razonablemente la caída de presión en los primeros 30 km de ascenso.
-      NOTA: Es una aproximación analítica gruesa frente a la US Standard Atmosphere 1976 por capas.
-
-    Saturación:
-    - Para h < 0 m, satura a p0 = 101325.0 Pa.
+    En cada capa b, con T = T_b + L_b (h − h_b):
+        L_b ≠ 0:  p = p_b (T / T_b)^(−g0 / (R L_b))
+        L_b = 0:  p = p_b exp(−g0 (h − h_b) / (R T_b))
+    Por encima de la última capa (84,852 km) se sigue la isoterma de la mesopausa.
+    Como `compute_atmospheric_temperature`, toma la altitud como geopotencial (error < 1,4 %
+    en la altitud a 86 km). Para h < 0 se satura en p0 = 101 325 Pa.
 
     Parámetros
     ----------
@@ -143,9 +132,19 @@ def compute_atmospheric_pressure(
     float
         Presión atmosférica en pascales (Pa).
     """
-    if altitude_m < 0.0:
-        return P0_PA
-    return float(P0_PA * np.exp(-altitude_m / H_P_M))
+    h = max(0.0, float(altitude_m))
+    k = 0
+    while k + 1 < len(_US76_LAYERS) and h >= _US76_LAYERS[k + 1][0]:
+        k += 1
+    base_h, base_t, lapse = _US76_LAYERS[k]
+    return _US76_BASE_PRESSURE[k] * _layer_pressure_ratio(h - base_h, base_t, lapse)
+
+
+def _layer_pressure_ratio(dh: float, base_t: float, lapse: float) -> float:
+    """p/p_b dentro de una capa, a una distancia dh de su base."""
+    if lapse == 0.0:
+        return float(np.exp(-G0_M_S2 * dh / (R_AIR_J_KG_K * base_t)))
+    return float(((base_t + lapse * dh) / base_t) ** (-G0_M_S2 / (R_AIR_J_KG_K * lapse)))
 
 
 def compute_relative_velocity(
@@ -363,6 +362,19 @@ _US76_LAYERS: tuple[tuple[float, float, float], ...] = (
     (51_000.0, 270.65, -0.0028),
     (71_000.0, 214.65, -0.002),
     (84_852.0, 186.946, 0.0),
+)
+
+# Presión en la base de cada capa, integrando la hidrostática desde p0 (≈ 22 632 Pa a 11 km,
+# 5 475 Pa a 20 km, 868 Pa a 32 km, …, 0,373 Pa a 84,852 km, como la tabla oficial).
+_US76_BASE_PRESSURE: tuple[float, ...] = tuple(
+    float(v)
+    for v in np.cumprod(
+        [P0_PA]
+        + [
+            _layer_pressure_ratio(_US76_LAYERS[k + 1][0] - _US76_LAYERS[k][0], *_US76_LAYERS[k][1:])
+            for k in range(len(_US76_LAYERS) - 1)
+        ]
+    )
 )
 
 # Tabla Cd(Mach) representativa de un lanzador esbelto a ángulo de ataque nulo.

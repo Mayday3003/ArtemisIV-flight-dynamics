@@ -54,6 +54,7 @@ flowchart TB
 | `moon_frame.py` | Marco selenocéntrico fijo a la Luna (rotante del CR3BP girado 180°) ↔ ECI; latitud y longitud | `rotating_to_moon_fixed`, `moon_fixed_to_eci`, `eci_to_moon_fixed`, `surface_point` |
 | `descent_solver.py` | Descenso del HLS: dinámica con Coriolis, centrífuga y marea terrestre; DOI, E-guidance en tres tramos y evento de contacto | `MoonFixedDynamics`, `choose_doi_tau`, `e_guidance`, `simulate_descent` |
 | `mission.py` | Encadena las fases (ascenso → aparcamiento → TLI → OPF → NRI → NRHO → DOI → alunizaje) con la ventana de lanzamiento | `build_mission_phases_1_to_3`, `build_mission_phases_1_to_4`, `build_mission_phases_1_to_5` |
+| `pipeline.py` | Punto de entrada único de la misión completa y sus números clave | `MissionConfig`, `run_mission`, `MissionRun.key_numbers` |
 | `export.py` | Remuestreo con Hermite cúbico y exportación a JSON por columnas para la web | `MissionTrajectory`, `resample`, `to_json`, `from_json` |
 
 ## Flujo de un cálculo completo

@@ -18,8 +18,8 @@ sys.path.insert(0, str(ROOT / "src"))
 from artemis_sim.cr3bp import MU, UNITS  # noqa: E402
 from artemis_sim.descent_solver import LandingSite  # noqa: E402
 from artemis_sim.export import MissionTrajectory, hermite_interpolate, resample, to_json  # noqa: E402
-from artemis_sim.mission import build_mission_phases_1_to_5  # noqa: E402
 from artemis_sim.periodic_orbits import PeriodicOrbit  # noqa: E402
+from artemis_sim.pipeline import MissionRun, run_mission  # noqa: E402
 
 OUT = ROOT / "frontend" / "data" / "mission.json"
 
@@ -71,9 +71,12 @@ def site_payload(site: LandingSite) -> dict[str, object]:
     }
 
 
-def main() -> None:
-    print("Construyendo la misión (ascenso → … → NRHO → DOI → PDI → alunizaje)…")
-    raw, summary5 = build_mission_phases_1_to_5()
+def main(run: MissionRun | None = None) -> None:
+    """Exporta `run` (si no se da, construye la misión: ~4 min)."""
+    if run is None:
+        print("Construyendo la misión (ascenso → … → NRHO → DOI → PDI → alunizaje)…")
+        run = run_mission()
+    raw, summary5 = run.trajectory, run.summary
     summary = summary5.phases_1_to_4
     s3 = summary.phases_1_to_3
     print(f"  MECO          t = {s3.t_meco_s:8.1f} s")

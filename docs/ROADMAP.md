@@ -96,9 +96,9 @@
 | TLI impulsiva | Ignora unos 20 min de combustión y las pérdidas por gravedad | **Combustión finita** de la EUS (integrar empuje + masa) | `symplectic_solver.py` / nuevo `burns.py` |
 | Tierra esférica | Sin achatamiento: la precesión nodal de la órbita LEO se pierde | Término **J₂** | `physics_engine.py` |
 | Sin perturbación solar | Error de algunos km en 4 días | Sol como 4.º cuerpo (con DE440) | `symplectic_solver.py` |
-| Guiado en vacío orientado con `v_rel` | La inclinación deriva de 28,6° a 31,7° durante el ascenso (rumbo de 90° a 109°): el empuje sigue el "este local" en lugar de mantener el plano inercial | En `linear_tangent_direction`, usar la velocidad **inercial** (`v_rel + ω×r`) fuera de la atmósfera y volver a ajustar θ₀ y θ_f. Cambia los números del MECO, así que hay que regenerar el informe | `ascent_solver.py` |
-| RS-25 sin estrangulamiento | 3,5 g en el MECO; el real limita a ~3 g | Throttle por límite de aceleración y en Max-Q | `ascent_solver.py` |
-| Atmósfera exponencial para la densidad | Error de ~20 % sobre 30 km | Densidad US76 completa por capas (ya tenemos la temperatura) | `physics_engine.py` |
+| ✅ Guiado en vacío orientado con `v_rel` | La inclinación deriva de 28,6° a 31,7° durante el ascenso (rumbo de 90° a 109°): el empuje sigue el "este local" en lugar de mantener el plano inercial | En `linear_tangent_direction`, usar la velocidad **inercial** (`v_rel + ω×r`) fuera de la atmósfera y volver a ajustar θ₀ y θ_f. Cambia los números del MECO, así que hay que regenerar el informe | `ascent_solver.py` |
+| ✅ RS-25 sin estrangulamiento | 3,5 g en el MECO; el real limita a ~3 g | Throttle por límite de aceleración y en Max-Q | `ascent_solver.py` |
+| ✅ Atmósfera exponencial para la densidad | Error de ~20 % sobre 30 km | Densidad US76 completa por capas (ya tenemos la temperatura) | `physics_engine.py` |
 | Datos de la EUS "pendientes de verificar" | El programa Artemis se está reestructurando | Revisar contra fuentes de la NASA y documentar la fecha de consulta | `constants.py` |
 
 #### 🟢 P2: calidad de ingeniería
@@ -462,15 +462,16 @@ Alunizaje en la región polar sur (86,8° S, 179,0° E) a 1 cm del sitio, a 1,00
 
 ---
 
-### Etapa 6: Integración final y mejoras de fidelidad
+### Etapa 6: Integración final y mejoras de fidelidad ✅ (terminada el 2026-10-28)
 **Objetivo:** misión completa de las 5 fases en un solo comando, con el visualizador final y el informe actualizado.
 **Tiempo estimado:** 1,5 a 2 semanas.
 
-- [ ] `src/artemis_sim/pipeline.py`: `run_mission(config) → MissionTrajectory` encadena ascenso → aparcamiento → TLI → NRHO → descenso, con el estado de salida de cada fase como entrada de la siguiente.
-- [ ] `scripts/run_mission.py` genera de una vez figuras, `results.json`, `results.tex` y `mission.json`.
-- [ ] Mejoras P1 de la [sección 3](#-p1-mejoras-de-fidelidad-física-etapa-6-cuando-las-fases-estén-completas), en este orden de impacto: **DE440 → GMST/inclinación real → combustiones finitas → J₂ → Sol → estrangulamiento → densidad US76**.
-- [ ] Visualizador: la misión de las 5 fases, cámara cinemática por fase y modo "presentación" con recorrido automático.
-- [ ] Informe: secciones nuevas (NRHO, transferencia, descenso) y figuras.
+- [x] `src/artemis_sim/pipeline.py`: `run_mission(config) → MissionRun` encadena ascenso → aparcamiento → TLI → NRHO → descenso, con el estado de salida de cada fase como entrada de la siguiente.
+- [x] `scripts/run_mission.py` genera de una vez figuras (fig01–fig12), `results.json`, `results.tex`, `results_mission.tex` y `mission.json` (~8 min; `--quick` solo la misión).
+- [x] Mejoras P1 del ascenso: **densidad US76 por capas**, **estrangulamiento de los RS-25 a 3 g** y **guiado en el vacío con la velocidad inercial** (la inclinación pasa de 31,7° a 29,8°). Se reajustaron θ₀ y θ_f.
+- [ ] Mejoras P1 de la órbita (**DE440, Sol, combustiones finitas, J₂, GMST**): aplazadas a propósito. Rompen la periodicidad exacta de la NRHO en el CR3BP, sobre la que están diseñadas la transferencia (Etapa 4) y la geometría del descenso (Etapa 5). Hacerlas bien exige rediseñar ambas en un modelo de efemérides.
+- [x] Visualizador: la misión de las 5 fases y **modo presentación** (tecla P), con una toma de cámara por fase (`frontend/js/tour.js`).
+- [x] Informe: secciones nuevas (NRHO, transferencia, descenso, mascons, presupuesto de Δv) y figuras fig09–fig12.
 - [ ] Presentación actualizada.
 
 **Terminado cuando:** `python scripts/run_mission.py && python -m http.server -d frontend` muestra la misión completa y todas las pruebas están en verde.
