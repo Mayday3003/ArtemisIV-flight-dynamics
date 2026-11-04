@@ -46,3 +46,36 @@ export function hermiteState(s, tq) {
     k,
   };
 }
+
+/**
+ * Puntos para dibujar: subdivide con Hermite los tramos que giran más de maxDeg, para que la
+ * curva no se vea facetada en el perilunio. Devuelve { t, x, y, z, phase, n }.
+ */
+export function densify(s, maxDeg = 2, maxSub = 24) {
+  const out = { t: [], x: [], y: [], z: [], phase: [] };
+  const push = (t, r, phase) => {
+    out.t.push(t);
+    out.x.push(r[0]);
+    out.y.push(r[1]);
+    out.z.push(r[2]);
+    out.phase.push(phase);
+  };
+  for (let k = 0; k < s.n - 1; k++) {
+    const a = Math.hypot(s.vx[k], s.vy[k], s.vz[k]);
+    const b = Math.hypot(s.vx[k + 1], s.vy[k + 1], s.vz[k + 1]);
+    const dot = s.vx[k] * s.vx[k + 1] + s.vy[k] * s.vy[k + 1] + s.vz[k] * s.vz[k + 1];
+    const deg = (Math.acos(Math.min(Math.max(dot / (a * b || 1), -1), 1)) * 180) / Math.PI;
+    const sub = Math.min(Math.max(Math.ceil(deg / maxDeg), 1), maxSub);
+    push(s.t[k], [s.x[k], s.y[k], s.z[k]], s.phase[k]);
+    for (let i = 1; i < sub; i++) {
+      const t = s.t[k] + (i / sub) * (s.t[k + 1] - s.t[k]);
+      push(t, hermiteState(s, t).r, s.phase[k + 1]);
+    }
+  }
+  const e = s.n - 1;
+  push(s.t[e], [s.x[e], s.y[e], s.z[e]], s.phase[e]);
+  return {
+    t: Float64Array.from(out.t), x: Float64Array.from(out.x), y: Float64Array.from(out.y),
+    z: Float64Array.from(out.z), phase: Int32Array.from(out.phase), n: out.t.length,
+  };
+}

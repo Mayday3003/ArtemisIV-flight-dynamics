@@ -285,7 +285,7 @@ frontend/
    - **Rotante Tierra–Luna:** girar cada punto un ángulo `−n·t` alrededor de z. La NRHO se verá como un halo fijo.
    - **Selenocéntrico:** restar `r_Luna(t)`.
 4. **Interpolación entre muestras:** Hermite cúbico, que usa posición **y** velocidad, para que el movimiento sea suave a cualquier velocidad de reproducción.
-5. **Texturas:** usar mapas de NASA de dominio público (Blue Marble, Lunar Reconnaissance Orbiter CGI Moon Kit). Guardarlos en `frontend/assets/` con su crédito.
+5. **Texturas:** usar mapas de NASA de dominio público (Blue Marble, Lunar Reconnaissance Orbiter CGI Moon Kit). Guardarlos en `frontend/assets/` con su crédito. Fuentes en `frontend/assets/CREDITS.md`.
 6. **Sin compilador:** `importmap` con `three@0.160.0` desde jsDelivr, igual que la referencia.
 
 **Tareas:**

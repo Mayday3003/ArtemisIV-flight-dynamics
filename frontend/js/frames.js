@@ -77,8 +77,31 @@ export function createFrames(moon) {
     ];
   }
 
+  /** ω × r con ω = n·h, el giro del marco rotante (y de la Luna, en rotación síncrona). */
+  function spin(r) {
+    return [
+      n * (h[1] * r[2] - h[2] * r[1]),
+      n * (h[2] * r[0] - h[0] * r[2]),
+      n * (h[0] * r[1] - h[1] * r[0]),
+    ];
+  }
+
+  /** Velocidad respecto a la superficie lunar: v − ω×r (ECI, km/s). */
+  function moonFixedVelocity(r, v) {
+    const w = spin(r);
+    return [v[0] - w[0], v[1] - w[1], v[2] - w[2]];
+  }
+
+  /** Velocidad vista en el marco: incluye el movimiento del propio marco. */
+  function velocityToFrame(frame, r, v, t) {
+    if (frame === "eci") return v;
+    if (frame === "rot") return applyMatrix(matrix("rot", t), moonFixedVelocity(r, v));
+    const w = spin(moonPosition(t));
+    return [v[0] - w[0], v[1] - w[1], v[2] - w[2]];
+  }
+
   return {
-    moonPosition, matrix, origin, toFrame, directionToFrame, fromRotating,
+    moonPosition, matrix, origin, toFrame, directionToFrame, fromRotating, moonFixedVelocity, velocityToFrame,
     radius: d, normal: h, meanMotion: n,
   };
 }

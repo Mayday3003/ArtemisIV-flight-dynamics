@@ -4,6 +4,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Artemis IV · Visualizador de misión</title>
+    <link rel="icon" href="data:," />
     <link rel="stylesheet" href="css/style.css" />
     <script type="importmap">
       {
@@ -16,68 +17,97 @@
   </head>
   <body>
     <main id="viewport" aria-label="Escena 3D de la misión"></main>
+    <div id="labels" aria-hidden="true"></div>
     <div id="loading">Cargando la misión…</div>
 
-    <header class="panel" id="title">
-      <h1>Artemis IV</h1>
-      <p>SLS Block 1B + Orion · Fases 1–5: ascenso, aparcamiento, tránsito, NRHO de Gateway y descenso al polo sur</p>
-    </header>
-
-    <section class="panel" id="hud" aria-live="polite">
+    <section class="panel" id="hud">
+      <div class="brand">ARTEMIS IV</div>
       <div class="met" id="hud-met">T+ 0d 00:00:00</div>
       <div class="phase" id="hud-phase">—</div>
+      <div class="vehicle" id="hud-vehicle">—</div>
       <dl>
         <dt id="hud-alt-label">Altitud</dt><dd id="hud-alt">—</dd>
-        <dt>Velocidad (ECI)</dt><dd id="hud-speed">—</dd>
-        <dt>Distancia a la Luna</dt><dd id="hud-dist-moon">—</dd>
-        <dt>Masa</dt><dd id="hud-mass">—</dd>
-        <dt>Marco</dt><dd id="hud-frame">—</dd>
+        <dd class="spark"><canvas id="spark-alt"></canvas><i class="cursor"></i></dd>
+        <dt id="hud-speed-label">Velocidad</dt><dd id="hud-speed">—</dd>
+        <dd class="spark"><canvas id="spark-speed"></canvas><i class="cursor"></i></dd>
+        <div id="hud-rates" class="rates" hidden>
+          <dt>Vertical</dt><dd id="hud-vertical">—</dd>
+          <dt>Horizontal</dt><dd id="hud-horizontal">—</dd>
+        </div>
+        <dt class="secondary">Masa</dt><dd class="secondary" id="hud-mass">—</dd>
       </dl>
     </section>
 
-    <section class="panel" id="controls">
-      <label>Marco <select id="frame"></select></label>
-      <label>Foco
-        <select id="focus">
-          <option value="ship">Nave</option>
-          <option value="earth">Tierra</option>
-          <option value="moon">Luna</option>
-        </select>
-      </label>
-      <fieldset>
-        <legend>Capas</legend>
-        <label><input type="checkbox" id="layer-trajectory" checked /> Trayectoria</label>
-        <label><input type="checkbox" id="layer-moon-orbit" checked /> Órbita lunar</label>
-        <label><input type="checkbox" id="layer-nrho" checked /> NRHO (Gateway)</label>
-        <label><input type="checkbox" id="layer-velocity" checked /> Vector velocidad</label>
-        <label><input type="checkbox" id="layer-stars" checked /> Estrellas</label>
-        <label><input type="checkbox" id="layer-axes" /> Ejes del marco</label>
-        <label><input type="checkbox" id="reduce-motion" /> Reducir movimiento</label>
-      </fieldset>
-      <button id="tour-btn" type="button" aria-pressed="false">Presentación (P)</button>
-      <button id="help-btn" type="button">Ayuda (H)</button>
-    </section>
+    <nav class="panel" id="views" aria-label="Opciones">
+      <button type="button" id="guide-btn" hidden>Volver a cámara guiada</button>
+      <button type="button" id="science-btn" aria-expanded="false" aria-controls="science">Ciencia</button>
+      <button type="button" id="help-btn" aria-label="Ayuda">?</button>
+    </nav>
+
+    <aside class="panel" id="science" hidden>
+      <h2>Ciencia de esta fase</h2>
+      <p id="sci-physics"></p>
+      <dl>
+        <dt>Método</dt><dd id="sci-method"></dd>
+        <dt>Resultado</dt><dd id="sci-result"></dd>
+        <dt>Marco de la vista</dt><dd id="hud-frame"></dd>
+      </dl>
+      <h2>Δv <span id="dv-spent"></span></h2>
+      <div id="dv-bar"></div>
+      <ul id="dv-list"></ul>
+    </aside>
+
+    <article class="panel" id="event-card" role="status" hidden>
+      <div class="kicker"><span id="card-time"></span><span id="card-dv"></span></div>
+      <h3 id="card-title"></h3>
+      <p id="card-text"></p>
+    </article>
 
     <footer class="panel" id="timeline">
       <button id="play" type="button" aria-label="Reproducir">▶</button>
       <div id="track-wrap">
-        <div id="track"></div>
+        <div id="tags"></div>
+        <div id="track"><div id="curtain"></div></div>
         <input id="slider" type="range" min="0" max="1000" step="1" value="0" aria-label="Tiempo de misión" />
+        <div id="names"></div>
       </div>
-      <select id="speed" aria-label="Velocidad de reproducción"></select>
     </footer>
 
-    <div id="toast" role="status"></div>
+    <section class="overlay" id="intro" hidden>
+      <div class="overlay-box">
+        <div class="kicker">Universidad de Medellín · Computación Científica</div>
+        <h1>Artemis IV</h1>
+        <p>De la plataforma LC-39B al polo sur de la Luna: 16 días de misión, simulados numéricamente de punta a punta.</p>
+        <div class="actions">
+          <button class="primary" id="intro-start" type="button">Iniciar misión</button>
+        </div>
+      </div>
+    </section>
+
+    <section class="overlay end" id="finale" hidden>
+      <div class="overlay-box">
+        <div class="kicker">Región polar sur · 86,8° S</div>
+        <h1>Alunizaje confirmado</h1>
+        <div class="stats" id="finale-stats"></div>
+        <div class="actions">
+          <button class="primary" id="finale-replay" type="button">Ver de nuevo</button>
+          <button id="finale-close" type="button">Seguir explorando</button>
+        </div>
+      </div>
+    </section>
 
     <dialog id="help">
       <h2>Cómo usar el visualizador</h2>
       <table>
+        <tr><td>Clic en un evento</td><td>Salta a él con su toma de cámara y su explicación</td></tr>
         <tr><td><kbd>Espacio</kbd></td><td>Reproducir / pausar</td></tr>
         <tr><td><kbd>←</kbd> <kbd>→</kbd></td><td>Evento anterior / siguiente (Max-Q, MECO, TLI, OPF, NRI, DOI, PDI…)</td></tr>
-        <tr><td><kbd>↑</kbd> <kbd>↓</kbd></td><td>Más / menos velocidad de reproducción</td></tr>
+        <tr><td><kbd>↑</kbd> <kbd>↓</kbd></td><td>Más / menos velocidad de reproducción (por defecto se ajusta sola a cada fase)</td></tr>
         <tr><td><kbd>1</kbd> <kbd>2</kbd> <kbd>3</kbd></td><td>Marco ECI / rotante Tierra–Luna / selenocéntrico</td></tr>
         <tr><td><kbd>N</kbd> <kbd>T</kbd> <kbd>L</kbd></td><td>Enfocar nave / Tierra / Luna</td></tr>
-        <tr><td><kbd>P</kbd></td><td>Modo presentación: recorre la misión con una toma por fase</td></tr>
+        <tr><td><kbd>G</kbd></td><td>Volver a la cámara guiada (se desactiva al mover la cámara)</td></tr>
+        <tr><td><kbd>E</kbd></td><td>Mostrar u ocultar etiquetas</td></tr>
+        <tr><td><kbd>C</kbd></td><td>Mostrar u ocultar Ciencia</td></tr>
         <tr><td><kbd>H</kbd></td><td>Esta ayuda</td></tr>
         <tr><td>Ratón / dedos</td><td>Girar, acercar y desplazar la cámara</td></tr>
       </table>
@@ -92,8 +122,8 @@
         Poco antes del perilunio de la NRHO el HLS hace la DOI: una elipse con perilunio a 15 km, media vuelta
         más allá. En el PDI empieza el descenso propulsado con E-guidance (frenado → high gate → aproximación →
         low gate a 100 m → descenso vertical a 1 m/s), integrado en el marco fijo a la Luna con la gravedad
-        GRGM1200A de GRAIL hasta grado 100. El punto rojo es el sitio de alunizaje (86,8° S). Para verlo, usa
-        <kbd>L</kbd> (foco en la Luna) y el marco selenocéntrico (<kbd>3</kbd>).
+        GRGM1200A de GRAIL hasta grado 100. Haz clic en PDI o Contacto en la línea de tiempo para ir al sitio (86,8° S).
+        Cerca de la Luna, la velocidad se mide respecto a su superficie.
       </p>
       <h3>Marcos de referencia</h3>
       <ul>
@@ -104,7 +134,8 @@
       <p class="note">
         La barra de tiempo no es lineal: cada fase ocupa un ancho proporcional al logaritmo de su duración.
         Escala: 1 unidad = 1 000 km. La escena se recentra en el cuerpo enfocado (origen flotante) para no perder precisión en Float32.
-        Datos: <code>scripts/export_mission.py</code> → <code>data/mission.json</code>.
+        Las naves no están a escala (serían invisibles): su tamaño depende del cuerpo más cercano y siempre es menor que él.
+        Datos: <code>scripts/export_mission.py</code> → <code>data/mission.json</code>. Texturas: ver <code>assets/CREDITS.md</code>.
       </p>
       <button id="help-close" type="button">Cerrar</button>
     </dialog>

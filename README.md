@@ -11,10 +11,10 @@ Autores: Mariana Lopera Correa, Juan José Becerra Bedoya y Daniel Santiago Mach
 | 2 · Tránsito Tierra–Luna | Problema restringido de tres cuerpos | Velocity Verlet (simpléctico) | Integral de Jacobi conservada a ~1e-5 |
 | 3 · TLI | Problema de valores en la frontera | Método del disparo + Newton-Raphson | Δv = 3 150 m/s en 5 iteraciones |
 | NRHO de Gateway | CR3BP adimensional + matriz de transición de estados | Corrección diferencial + continuación | NRHO 9:2: periodo 6,56 d, perilunio 3 248 km |
-| 4 · TLI → NRHO | Sobrevuelo lunar propulsado (OPF) + inserción (NRI) con Orion | Disparo múltiple + SLSQP | OPF 304 m/s + NRI 174 m/s |
+| 4 · TLI → NRHO | Sobrevuelo lunar propulsado (OPF) + inserción (NRI) con Orion | Disparo múltiple + SLSQP | OPF 291 m/s + NRI 172 m/s |
 | 5 · Descenso del HLS al polo sur | Gravedad lunar GRGM1200A (grado 100, Pines) en el marco fijo a la Luna, masa variable | DOP853 con eventos + E-guidance | DOI 702 m/s + descenso 2 297 m/s; contacto a 1 m/s y a 1 cm del sitio (86,8° S) |
 
-El visualizador 3D (Three.js) en [frontend/](frontend/) reproduce la misión completa (Fases 1–5). La hoja de ruta está en [docs/ROADMAP.md](docs/ROADMAP.md).
+El visualizador 3D (Three.js) en [frontend/](frontend/) reproduce la misión completa (Fases 1–5), con presentación guiada, explicación de cada evento y presupuesto de Δv. La hoja de ruta está en [docs/ROADMAP.md](docs/ROADMAP.md).
 
 ---
 
@@ -34,7 +34,7 @@ pip install -r requirements.txt
 
 | Tarea | Comando | Resultado |
 |---|---|---|
-| Correr las pruebas | `python -m pytest` | 75 pruebas en ~30 s |
+| Correr las pruebas | `python -m pytest` | 132 pruebas |
 | Generar figuras y resultados | `python scripts/generate_figures.py` | `docs/figures/*.png`, `docs/paper/final/figures/*.pdf`, `results.json`, `results.tex` |
 | **Todo de una vez** | `python scripts/run_mission.py` | Figuras fig01–fig12, `results*.tex`, `results.json` y `mission.json` (~8 min) |
 | Familia de halos y NRHO | `python scripts/nrho_figures.py` | `docs/figures/fig09_familia_halo.png` |
@@ -43,7 +43,7 @@ pip install -r requirements.txt
 | Compilar el informe | `cd docs/paper/final && pdflatex main.tex && pdflatex main.tex` | `main.pdf` |
 | Regenerar la presentación | `cd docs/presentation && npm install && npm run build` | `Artemis_IV_UdeM.pptx` |
 | Abrir el visualizador 3D | `python -m http.server 8000 -d frontend` → http://localhost:8000 | Misión completa (Fases 1–5) en el navegador |
-| Pruebas del visualizador | `node --test frontend/tests/*.test.mjs` | Marcos, interpolación y línea de tiempo |
+| Pruebas del visualizador | `node --test frontend/tests/*.test.mjs` | Marcos, interpolación, línea de tiempo, telemetría y cifras contra `results.json` |
 | Revisar estilo y tipos | `ruff check src tests scripts && mypy src` | Sin errores |
 
 ### Ejemplo: ascenso completo

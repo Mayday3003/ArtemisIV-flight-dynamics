@@ -1,19 +1,23 @@
 // Modo presentación: recorre la misión de principio a fin con una toma de cámara por fase.
 // Módulo puro (sin DOM ni Three.js) para poder probarlo con node --test.
 
+/** Cámara del lado del Sol (+x en ECI), para no ver el lado nocturno. */
+export const SUNLIT = [0.82, -0.5, 0.3];
+
 /**
- * Toma por fase: marco, cuerpo enfocado, índice de velocidad (en SPEEDS de timeline.js) y
- * distancia de cámara en unidades de escena (1 000 km). Fases sin toma usan DEFAULT_SHOT.
+ * Toma por fase: marco, cuerpo enfocado y distancia de cámara en unidades de escena (1 000 km).
+ * `view: "horizon"` pone la cámara rasante sobre el cuerpo más cercano. La velocidad la da el
+ * modo Auto de la línea de tiempo. Fases sin toma usan DEFAULT_SHOT.
  */
 export const TOUR_SHOTS = {
-  ascent: { frame: "eci", focus: "ship", speed: 1, distance: 0.6 },
-  parking: { frame: "eci", focus: "earth", speed: 3, distance: 20 },
-  transit: { frame: "rot", focus: "earth", speed: 5, distance: 260 },
-  nrho: { frame: "rot", focus: "moon", speed: 5, distance: 160 },
-  descent: { frame: "moon", focus: "moon", speed: 3, distance: 9 },
-  landing: { frame: "moon", focus: "ship", speed: 2, distance: 0.4 },
+  ascent: { frame: "eci", focus: "ship", distance: 0.6, view: "horizon" },
+  parking: { frame: "eci", focus: "earth", distance: 22, dir: SUNLIT },
+  transit: { frame: "rot", focus: "system", distance: 620, dir: [0.1, -0.62, 0.78] },
+  nrho: { frame: "rot", focus: "moon", distance: 170, dir: [0.92, -0.38, 0.08] },
+  descent: { frame: "moon", focus: "moon", distance: 9, dir: [0.8, -0.45, -0.4] },
+  landing: { frame: "moon", focus: "ship", distance: 0.5, view: "horizon" },
 };
-export const DEFAULT_SHOT = { frame: "eci", focus: "ship", speed: 3, distance: 3 };
+export const DEFAULT_SHOT = { frame: "eci", focus: "ship", distance: 3 };
 
 /** Índice de la fase que contiene t (la última si t está más allá del final). */
 export function phaseIndexAt(phases, t) {
@@ -27,7 +31,7 @@ export function shotAt(phases, t) {
 }
 
 /**
- * Controlador del recorrido. `apply(shot)` cambia marco, foco, velocidad y cámara;
+ * Controlador del recorrido. `apply(shot)` cambia marco, foco y cámara;
  * se llama al empezar y cada vez que se entra en una fase nueva.
  */
 export function createTour(phases, apply) {

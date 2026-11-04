@@ -3,63 +3,46 @@
 import * as THREE from "three";
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 
+import { setLineResolution } from "./trajectory.js";
+
 export const KM_PER_UNIT = 1000;
 
-/** Textura procedural de la Tierra: océano, casquetes y retícula de 30° (sin descargas). */
-function earthTexture() {
-  const c = document.createElement("canvas");
-  c.width = 1024;
-  c.height = 512;
-  const g = c.getContext("2d");
-  const grad = g.createLinearGradient(0, 0, 0, c.height);
-  grad.addColorStop(0, "#e8eef5");
-  grad.addColorStop(0.08, "#1d5fa8");
-  grad.addColorStop(0.5, "#0f3f7a");
-  grad.addColorStop(0.92, "#1d5fa8");
-  grad.addColorStop(1, "#e8eef5");
-  g.fillStyle = grad;
-  g.fillRect(0, 0, c.width, c.height);
-  g.strokeStyle = "rgba(255,255,255,0.25)";
-  g.lineWidth = 1;
-  for (let lon = 0; lon < 360; lon += 30) {
-    const x = (lon / 360) * c.width;
-    g.beginPath();
-    g.moveTo(x, 0);
-    g.lineTo(x, c.height);
-    g.stroke();
-  }
-  for (let lat = -60; lat <= 60; lat += 30) {
-    const y = ((90 - lat) / 180) * c.height;
-    g.beginPath();
-    g.moveTo(0, y);
-    g.lineTo(c.width, y);
-    g.stroke();
-  }
-  const tex = new THREE.CanvasTexture(c);
+function texture(renderer, file) {
+  const tex = new THREE.TextureLoader().load(`assets/${file}`);
   tex.colorSpace = THREE.SRGBColorSpace;
+  tex.anisotropy = renderer.capabilities.getMaxAnisotropy();
   return tex;
 }
 
-function moonTexture() {
-  const c = document.createElement("canvas");
-  c.width = 512;
-  c.height = 256;
-  const g = c.getContext("2d");
-  g.fillStyle = "#9a9a9a";
-  g.fillRect(0, 0, c.width, c.height);
-  // Cráteres pseudoaleatorios con semilla fija (la Luna se ve igual en cada carga)
-  let seed = 7;
-  const rnd = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
-  for (let i = 0; i < 260; i++) {
-    const r = 2 + rnd() * 12;
-    g.fillStyle = `rgba(${60 + rnd() * 60},${60 + rnd() * 60},${60 + rnd() * 60},0.45)`;
-    g.beginPath();
-    g.arc(rnd() * c.width, rnd() * c.height, r, 0, 2 * Math.PI);
-    g.fill();
-  }
-  const tex = new THREE.CanvasTexture(c);
-  tex.colorSpace = THREE.SRGBColorSpace;
-  return tex;
+/** Halo azul de la atmósfera: brilla en el limbo y se apaga hacia el centro del disco. */
+function atmosphere(radius) {
+  return new THREE.Mesh(
+    new THREE.SphereGeometry(radius * 1.025, 64, 32),
+    new THREE.ShaderMaterial({
+      transparent: true,
+      depthWrite: false,
+      side: THREE.BackSide,
+      blending: THREE.AdditiveBlending,
+      vertexShader: `
+        #include <common>
+        #include <logdepthbuf_pars_vertex>
+        varying vec3 vNormal;
+        void main() {
+          vNormal = normalize(normalMatrix * normal);
+          gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+          #include <logdepthbuf_vertex>
+        }`,
+      fragmentShader: `
+        #include <common>
+        #include <logdepthbuf_pars_fragment>
+        varying vec3 vNormal;
+        void main() {
+          #include <logdepthbuf_fragment>
+          float rim = pow(clamp(-vNormal.z + 0.75, 0.0, 1.0), 5.0);
+          gl_FragColor = vec4(0.32, 0.6, 1.0, 1.0) * rim;
+        }`,
+    })
+  );
 }
 
 /** Esfera con los polos sobre el eje Z (SphereGeometry los pone sobre Y). */
@@ -71,6 +54,7 @@ function zUpSphere(radius, segments) {
 
 function starField(count, radius) {
   const pos = new Float32Array(count * 3);
+  const col = new Float32Array(count * 3);
   let seed = 42;
   const rnd = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
   for (let i = 0; i < count; i++) {
@@ -78,10 +62,14 @@ function starField(count, radius) {
     const a = 2 * Math.PI * rnd();
     const s = Math.sqrt(1 - z * z);
     pos.set([radius * s * Math.cos(a), radius * s * Math.sin(a), radius * z], 3 * i);
+    const b = 0.25 + 0.75 * rnd() ** 3; // pocas estrellas brillantes, muchas tenues
+    const warm = rnd() * 0.15;
+    col.set([b, b * (1 - warm / 2), b * (1 - warm)], 3 * i);
   }
   const geo = new THREE.BufferGeometry();
   geo.setAttribute("position", new THREE.BufferAttribute(pos, 3));
-  const mat = new THREE.PointsMaterial({ color: 0xffffff, size: 1.5, sizeAttenuation: false });
+  geo.setAttribute("color", new THREE.BufferAttribute(col, 3));
+  const mat = new THREE.PointsMaterial({ vertexColors: true, size: 1.4, sizeAttenuation: false });
   return new THREE.Points(geo, mat);
 }
 
@@ -103,38 +91,48 @@ export function createScene(container, bodies) {
   controls.minDistance = 1e-3;
   controls.maxDistance = 5e3;
 
-  scene.add(new THREE.AmbientLight(0xffffff, 0.25));
-  const sun = new THREE.DirectionalLight(0xffffff, 2.2);
+  scene.add(new THREE.AmbientLight(0xffffff, 0.3));
+  const sun = new THREE.DirectionalLight(0xffffff, 2.6);
   scene.add(sun, sun.target);
 
+  const earthRadius = bodies.earth.radius_km / KM_PER_UNIT;
   const earth = new THREE.Mesh(
-    zUpSphere(bodies.earth.radius_km / KM_PER_UNIT, 96),
-    new THREE.MeshStandardMaterial({ map: earthTexture(), roughness: 0.9 })
+    zUpSphere(earthRadius, 128),
+    new THREE.MeshStandardMaterial({ map: texture(renderer, "earth_blue_marble.jpg"), roughness: 0.85 })
   );
   earth.matrixAutoUpdate = false;
   scene.add(earth);
 
-  const moon = new THREE.Mesh(
-    zUpSphere(bodies.moon.radius_km / KM_PER_UNIT, 64),
-    new THREE.MeshStandardMaterial({ map: moonTexture(), roughness: 1 })
+  const clouds = new THREE.Mesh(
+    zUpSphere(earthRadius * 1.006, 96),
+    new THREE.MeshStandardMaterial({
+      map: texture(renderer, "earth_clouds_1024.png"), transparent: true, opacity: 0.75, depthWrite: false,
+    })
   );
+  earth.add(clouds);
+  earth.add(atmosphere(earthRadius));
+
+  // 256 segmentos: la flecha de cada faceta queda por debajo de 0,2 km, y el descenso es visible
+  const moon = new THREE.Mesh(
+    zUpSphere(bodies.moon.radius_km / KM_PER_UNIT, 256),
+    new THREE.MeshStandardMaterial({ map: texture(renderer, "moon_lroc_4k.jpg"), roughness: 1 })
+  );
+  moon.matrixAutoUpdate = false;
   scene.add(moon);
 
   const stars = starField(3000, 4e3);
   scene.add(stars);
 
-  const axes = new THREE.AxesHelper(bodies.earth.radius_km * 2 / KM_PER_UNIT);
-  axes.visible = false;
-  scene.add(axes);
-
   function resize() {
     camera.aspect = container.clientWidth / container.clientHeight;
     camera.updateProjectionMatrix();
     renderer.setSize(container.clientWidth, container.clientHeight);
+    setLineResolution(container.clientWidth, container.clientHeight);
   }
+  setLineResolution(container.clientWidth, container.clientHeight);
   window.addEventListener("resize", resize);
 
-  return { THREE, renderer, scene, camera, controls, sun, earth, moon, stars, axes };
+  return { THREE, renderer, scene, camera, controls, sun, earth, clouds, moon, stars };
 }
 
 /** Matrix4 de Three.js a partir de una 3×3 por filas y una traslación. */
@@ -146,6 +144,11 @@ export function rotZ(angle) {
   const c = Math.cos(angle);
   const s = Math.sin(angle);
   return [c, -s, 0, s, c, 0, 0, 0, 1];
+}
+
+/** Traspuesta de una 3×3 por filas. */
+export function transpose3(M) {
+  return [M[0], M[3], M[6], M[1], M[4], M[7], M[2], M[5], M[8]];
 }
 
 export function mul3(A, B) {

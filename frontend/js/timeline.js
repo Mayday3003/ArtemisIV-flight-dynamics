@@ -2,8 +2,11 @@
 // La barra no es lineal en t: cada fase ocupa un ancho proporcional a log(duración), así el
 // ascenso (8 min) no queda aplastado frente al tránsito (4 días).
 import { PHASE_COLORS } from "./palette.js";
+import { AUTO_RATE, PHASE_INFO, eventInfo } from "./story.js";
+import { phaseIndexAt } from "./tour.js";
 
-export const SPEEDS = [1, 10, 100, 1000, 10000, 50000];
+/** El índice 0 es el modo Auto: la velocidad depende de la fase. */
+export const SPEEDS = [0, 1, 10, 100, 1000, 10000, 50000];
 
 export function createPhaseScale(phases) {
   const w = phases.map((p) => Math.log1p(p.t_end - p.t_start));
@@ -41,84 +44,134 @@ export function formatMET(t) {
 
 /**
  * Conecta la barra y los botones. `state` = { t, playing, speedIndex } se modifica en sitio.
- * onEvent(label) se llama al cruzar un evento mientras se reproduce.
+ * on.cross(evento) se llama al cruzar un evento reproduciendo; on.jump(evento) al saltar a él.
  */
-export function createTimeline(dom, mission, state, onEvent) {
+export function createTimeline(dom, mission, state, on) {
   const { phases, events } = mission;
   const scale = createPhaseScale(phases);
   const tEnd = phases[phases.length - 1].t_end;
 
   // Bandas de fase y marcas de eventos
   phases.forEach((p, i) => {
+    const left = `${scale.edges[i] * 100}%`;
+    const width = `${(scale.edges[i + 1] - scale.edges[i]) * 100}%`;
     const band = document.createElement("div");
     band.className = "phase-band";
-    band.style.left = `${scale.edges[i] * 100}%`;
-    band.style.width = `${(scale.edges[i + 1] - scale.edges[i]) * 100}%`;
+    band.style.left = left;
+    band.style.width = width;
     band.style.background = PHASE_COLORS[p.id] ?? "#888";
     band.title = p.name;
-    band.textContent = p.name;
     dom.track.appendChild(band);
+    const name = document.createElement("div");
+    name.className = "phase-name";
+    name.style.left = left;
+    name.style.width = width;
+    name.style.color = PHASE_COLORS[p.id] ?? "#888";
+    name.textContent = PHASE_INFO[p.id]?.short ?? p.name;
+    dom.names.appendChild(name);
   });
+
+  // Eventos simultáneos (MECO e inserción) comparten marca
+  const ticks = [];
   for (const e of events) {
-    const tick = document.createElement("button");
-    tick.className = "event-tick";
-    tick.style.left = `${scale.toFraction(e.t) * 100}%`;
-    tick.title = e.label;
-    tick.setAttribute("aria-label", `Ir a ${e.label}`);
-    tick.addEventListener("click", () => seek(e.t));
-    dom.track.appendChild(tick);
+    if (ticks.at(-1)?.t === e.t) {
+      ticks.at(-1).el.title += ` · ${e.label}`;
+      continue;
+    }
+    const el = document.createElement("button");
+    el.className = "event-tick";
+    el.style.left = `${scale.toFraction(e.t) * 100}%`;
+    el.title = e.label;
+    el.setAttribute("aria-label", `Ir a ${e.label}`);
+    el.addEventListener("click", () => {
+      seek(e.t);
+      on.jump(e);
+    });
+    dom.track.appendChild(el);
+    const tag = document.createElement("span");
+    tag.className = "event-tag";
+    tag.textContent = eventInfo(e.label).short;
+    tag.style.left = el.style.left;
+    dom.tags.appendChild(tag);
+    ticks.push({ t: e.t, el, tag });
   }
+
+  /** Reparte los nombres en tres filas para que no se pisen; si no caben, se ocultan. */
+  function layoutTags() {
+    const w = dom.tags.clientWidth;
+    const right = [-Infinity, -Infinity, -Infinity];
+    for (const { t, tag } of ticks) {
+      tag.hidden = false;
+      const half = tag.offsetWidth / 2;
+      const x = Math.min(Math.max(scale.toFraction(t) * w, half), w - half); // sin salirse de la barra
+      const row = right.findIndex((r) => x - half > r + 4);
+      tag.hidden = row < 0;
+      if (row >= 0) {
+        tag.dataset.row = row;
+        tag.style.left = `${x}px`;
+        right[row] = x + half;
+      }
+    }
+  }
+  window.addEventListener("resize", layoutTags);
+  layoutTags();
 
   dom.slider.addEventListener("input", () => seek(scale.toTime(Number(dom.slider.value) / 1000), false));
   dom.play.addEventListener("click", togglePlay);
-  dom.speed.innerHTML = SPEEDS.map((s, i) => `<option value="${i}">×${s.toLocaleString("es")}</option>`).join("");
-  dom.speed.value = String(state.speedIndex);
-  dom.speed.addEventListener("change", () => (state.speedIndex = Number(dom.speed.value)));
 
   function seek(t, moveSlider = true) {
     state.t = Math.min(Math.max(t, 0), tEnd);
     if (moveSlider) syncSlider();
+    else dom.curtain.style.left = `${scale.toFraction(state.t) * 100}%`;
   }
 
   function syncSlider() {
-    dom.slider.value = String(Math.round(scale.toFraction(state.t) * 1000));
+    const f = scale.toFraction(state.t);
+    dom.slider.value = String(Math.round(f * 1000));
+    dom.curtain.style.left = `${f * 100}%`;
+  }
+
+  function setPlaying(on) {
+    state.playing = on;
+    dom.play.textContent = on ? "❚❚" : "▶";
+    dom.play.setAttribute("aria-label", on ? "Pausa" : "Reproducir");
   }
 
   function togglePlay() {
     if (state.t >= tEnd) state.t = 0;
-    state.playing = !state.playing;
-    dom.play.textContent = state.playing ? "❚❚" : "▶";
-    dom.play.setAttribute("aria-label", state.playing ? "Pausa" : "Reproducir");
+    setPlaying(!state.playing);
   }
 
   function setSpeed(delta) {
     state.speedIndex = Math.min(Math.max(state.speedIndex + delta, 0), SPEEDS.length - 1);
-    dom.speed.value = String(state.speedIndex);
   }
 
   function setSpeedIndex(i) {
     state.speedIndex = Math.min(Math.max(i, 0), SPEEDS.length - 1);
-    dom.speed.value = String(state.speedIndex);
   }
 
   /** Salta al evento anterior/siguiente (dir = ±1). */
   function jumpEvent(dir) {
     const eps = 1e-3;
     const list = dir > 0 ? events.filter((e) => e.t > state.t + eps) : events.filter((e) => e.t < state.t - eps).reverse();
-    if (list.length) seek(list[0].t);
+    if (list.length) {
+      seek(list[0].t);
+      on.jump(list[0]);
+    }
   }
 
   /** Avanza el reloj dt_real segundos de pared. */
   function tick(dtReal) {
     if (!state.playing) return;
     const t0 = state.t;
-    const t1 = Math.min(t0 + dtReal * SPEEDS[state.speedIndex], tEnd);
-    for (const e of events) if (e.t > t0 && e.t <= t1) onEvent(e.label);
+    const rate = SPEEDS[state.speedIndex] || AUTO_RATE[phases[phaseIndexAt(phases, t0)].id] || 1000;
+    const t1 = Math.min(t0 + dtReal * rate, tEnd);
+    for (const e of events) if (e.t > t0 && e.t <= t1) on.cross(e);
     state.t = t1;
-    if (t1 >= tEnd && state.playing) togglePlay();
+    if (t1 >= tEnd) setPlaying(false); // se queda en el alunizaje; togglePlay reiniciaría
     syncSlider();
   }
 
   syncSlider();
-  return { tick, seek, togglePlay, setSpeed, setSpeedIndex, jumpEvent, tEnd };
+  return { tick, seek, togglePlay, setSpeed, setSpeedIndex, jumpEvent, layoutTags, tEnd };
 }
