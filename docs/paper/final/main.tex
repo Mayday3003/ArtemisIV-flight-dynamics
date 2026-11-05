@@ -26,10 +26,11 @@
 \usepackage[font=small, labelfont=bf]{caption}
 \usepackage{microtype}
 \usepackage{xcolor}
+\usepackage[section]{placeins}
 \usepackage[separate-uncertainty=true, group-separator={\,}, group-minimum-digits=4]{siunitx}
 \usepackage[colorlinks=true, linkcolor=blue!50!black, citecolor=blue!50!black, urlcolor=blue!50!black]{hyperref}
 
-\graphicspath{{figures/}}
+\graphicspath{{figures/}{../../figures/}{../../presentation/assets/}}
 \input{results.tex}
 \input{results_mission.tex}
 
@@ -43,19 +44,69 @@
 \textbf{Simulación dinámica multifase de la misión Artemis~IV:\\ del ascenso del SLS Block~1B a la NRHO de Gateway\\ y el alunizaje en el polo sur}}
 \author{Mariana Lopera Correa \and Juan José Becerra Bedoya \and Daniel Santiago Machado\\[0.3em]
 \small\textit{Programa de Computación Científica, Universidad de Medellín}}
-\date{28 de octubre de 2026}
+\date{4 de noviembre de 2026}
 
 \begin{document}
 
 \maketitle
 
+
+
 \begin{abstract}
 \noindent
-Se presenta un simulador numérico en Python del perfil de vuelo completo de la misión Artemis~IV con el lanzador \emph{Space Launch System} (SLS) Block~1B, desde el despegue hasta el alunizaje en el polo sur. El ascenso se modela en un marco geocéntrico inercial (ECI) como un sistema de siete ecuaciones diferenciales de primer orden con masa variable, empuje dependiente de la presión ambiental, un perfil regresivo de empuje de los propulsores sólidos (SRB) que conserva exactamente su masa de propelente, estrangulamiento de los RS-25 a \SI{3}{g}, arrastre con coeficiente $C_D(M)$ y la atmósfera estándar de 1976 por capas. Se integra con Dormand--Prince RK45 y detección de eventos (separación de SRB y apagado de la etapa central, MECO), con una ley de guiado de tangente lineal. El vehículo alcanza Max-Q $=\RMaxqKpa$~kPa a $t=\RTMaxqS$~s y MECO a $h=\RHMecoKm$~km con $v=\RVMecoKms$~km/s. El tránsito Tierra--Luna se formula como el Problema Restringido Circular de Tres Cuerpos, escrito en el marco geocéntrico con el término indirecto, y se integra con el esquema simpléctico Velocity Verlet, cuyo orden 2 se verifica numéricamente (pendiente $\ROrderVerlet$). En el problema de Kepler, el error de energía de Verlet permanece acotado ($\le\RVerletMaxDe$ en $\RNOrbitsCmp$ órbitas), mientras que el de RK4 con el mismo paso crece secularmente hasta $\RRkFourFinalDe$. Con la Luna, el invariante correcto es la integral de Jacobi, conservada con Verlet hasta $\RJacobiMaxRel$. Por último, la maniobra de inyección translunar (TLI) se resuelve como un problema de valores en la frontera mediante el método del disparo con Newton--Raphson, inicializado con una solución kepleriana de la ecuación de Kepler. Converge en $\RTliIterations$ iteraciones a $|\Delta\vect v|=\RTliDvMs$~m/s, consistente con el presupuesto de $\Delta v$ de la Etapa Superior de Exploración (EUS). La NRHO 9:2 de Gateway se obtiene en el CR3BP adimensional por corrección diferencial con la matriz de transición de estados (periodo $\RMNrhoPeriodD$~d) y se llega a ella con un sobrevuelo lunar propulsado y una inserción de Orion ($\RMDvOpfMs+\RMDvNriMs$~m/s), diseñados por disparo múltiple y SLSQP. El descenso del HLS se integra en el marco fijo a la Luna con el campo gravitatorio GRGM1200A de GRAIL hasta grado 100, evaluado con la formulación de Pines (sin singularidad en los polos), y un guiado de energía mínima (E-guidance): con $\RMDvDoiMs+\RMDvPoweredMs$~m/s el HLS toca el suelo a \RMTouchdownSpeedMs~m/s y a menos de \SI{1}{m} del sitio elegido, a $\RMSiteLatDeg^\circ$ de latitud. Los mascons desvían una órbita polar de \SI{100}{km} hasta \RMMasconDevJtwoKm~km en una sola vuelta respecto a un modelo con solo $J_2$.
+Se presenta un simulador numérico en Python de la misión Artemis~IV completa, desde el despegue del SLS Block~1B en Florida hasta el alunizaje en el polo sur, junto con un visualizador 3D interactivo. Cada fase usa el modelo y el método numérico adecuados a su física. El ascenso, con masa variable y arrastre, se integra con Dormand--Prince RK45 y detección de eventos: Max-Q $=\RMaxqKpa$~kPa y MECO a \RHMecoKm~km con \RVMecoKms~km/s. El tránsito Tierra--Luna se formula como problema restringido de tres cuerpos y se integra con Velocity Verlet, cuyo error de energía permanece acotado ($\le\RVerletMaxDe$) frente a la deriva de RK4 ($\RRkFourFinalDe$); la integral de Jacobi se conserva hasta $\RJacobiMaxRel$. La inyección translunar se resuelve con el método del disparo y Newton--Raphson en \RTliIterations{} iteraciones. La NRHO 9:2 de Gateway se obtiene por corrección diferencial (periodo de \RMNrhoPeriodD~d) y se llega a ella con un sobrevuelo propulsado y una inserción de Orion ($\RMDvOpfMs+\RMDvNriMs$~m/s), diseñados con disparo múltiple y SLSQP. El descenso del HLS usa el campo gravitatorio GRGM1200A de GRAIL hasta grado 100 con la formulación de Pines, y un guiado E-guidance en lazo cerrado: con $\RMDvDoiMs+\RMDvPoweredMs$~m/s toca el suelo a \RMTouchdownSpeedMs~m/s y a menos de \SI{1}{m} del sitio, a $\RMSiteLatDeg^\circ$ de latitud. Las cinco fases forman una sola trayectoria continua de \RMMissionDays~días, verificada con 133 pruebas automáticas en Python y 18 en el visualizador.
+
+\medskip\noindent\textbf{Palabras clave:} Artemis~IV, SLS Block~1B, integradores simplécticos, método del disparo, problema de tres cuerpos, NRHO, gravedad lunar, guiado de descenso.
 \end{abstract}
 
 \tableofcontents
 \newpage
+
+
+%==========================================================================
+\section{Guía de lectura y glosario}
+%==========================================================================
+El documento sigue la misión en orden cronológico. Las secciones~\ref{sec:f1} a~\ref{sec:f5} tratan una fase cada una y tienen la misma estructura: \emph{modelo} físico, \emph{método} numérico y \emph{resultados}. La \autoref{tab:fases} resume el conjunto y la \autoref{tab:glosario} reúne las siglas.
+
+\begin{table}[ht]
+\centering
+\caption{Las cinco fases de la misión: física, método y resultado principal.}
+\label{tab:fases}
+\small
+\begin{tabularx}{\textwidth}{@{}l X X X@{}}
+\toprule
+\textbf{Fase} & \textbf{Física} & \textbf{Método} & \textbf{Resultado} \\
+\midrule
+1. Ascenso & Empuje, arrastre, masa variable & RK45 con eventos & Max-Q \RMaxqKpa~kPa; MECO a \RHMecoKm~km \\
+2. Tránsito & Tres cuerpos, sin empuje & Velocity Verlet & Jacobi conservada a $\RJacobiMaxRel$ \\
+3. TLI & Problema de valores en la frontera & Disparo + Newton & \RTliIterations{} iteraciones \\
+4. NRHO & Órbitas periódicas del CR3BP & Corrección diferencial, disparo múltiple, SLSQP & Periodo \RMNrhoPeriodD~d; OPF + NRI $=\RMDvOpfMs+\RMDvNriMs$~m/s \\
+5. Descenso & Gravedad lunar real, masa variable & DOP853 + E-guidance & Contacto a \RMTouchdownSpeedMs~m/s \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\begin{table}[ht]
+\centering
+\caption{Glosario de siglas.}
+\label{tab:glosario}
+\small
+\begin{tabularx}{\textwidth}{@{}l X l X@{}}
+\toprule
+\textbf{Sigla} & \textbf{Significado} & \textbf{Sigla} & \textbf{Significado} \\
+\midrule
+SLS & Space Launch System, el cohete & CR3BP & Problema restringido circular de tres cuerpos \\
+SRB & Propulsores sólidos laterales & NRHO & Órbita de halo casi rectilínea (la de Gateway) \\
+EUS & Etapa superior de exploración & STM & Matriz de transición de estados \\
+HLS & Sistema de alunizaje tripulado & OPF & Sobrevuelo lunar propulsado \\
+ECI & Marco geocéntrico inercial & NRI & Inserción en la NRHO \\
+Max-Q & Máxima presión dinámica & DOI & Inserción en la órbita de descenso \\
+MECO & Apagado de los motores centrales & PDI & Inicio del descenso propulsado \\
+TLI & Inyección translunar & GRAIL & Misión de la NASA que midió la gravedad lunar \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
 
 %==========================================================================
 \section{Introducción}
@@ -72,11 +123,33 @@ Modelar este perfil exige combinar dinámicas de naturaleza muy distinta: un ré
 \end{enumerate}
 Además, se realizó una revisión crítica de la consistencia física y matemática del modelo; las correcciones introducidas se resumen en la \autoref{sec:revision}.
 
+\begin{figure}[ht]
+\centering
+\includegraphics[width=0.9\textwidth]{viz_mision.png}
+\caption{Trayectoria completa de la misión en el marco rotante Tierra--Luna, capturada del visualizador del proyecto.}
+\label{fig:mision}
+\end{figure}
+
+
 %==========================================================================
-\section{Planteamiento del problema}
+\section{La misión y el vehículo}
 %==========================================================================
 \subsection{Perfil de misión}
 El perfil completo de Artemis~IV comprende: (i) el lanzamiento con dos SRB de cinco segmentos y cuatro motores RS-25 en la etapa central (\emph{Core Stage}); (ii) la separación de los SRB, la combustión de la etapa central hasta el MECO y la inserción en una órbita de aparcamiento con la EUS; (iii) la TLI con los cuatro motores RL10C-3 de la EUS; (iv) la inserción en la NRHO de Gateway (periapsis de unos \SI{3000}{km} sobre el polo norte lunar y apoapsis de unos \SI{70000}{km} sobre el polo sur~\cite{howell2001,zimovan2017}); y (v) el descenso del HLS al polo sur lunar. El presente trabajo cubre numéricamente las cinco fases y las encadena en una sola trayectoria continua: el estado final de cada fase es el inicial de la siguiente (\autoref{sec:mision}).
+
+\begin{figure}[ht]
+\centering
+\begin{subfigure}[b]{0.49\textwidth}
+\includegraphics[width=\textwidth]{nasa_sls_family.jpg}
+\caption{Evolución de la familia SLS.}
+\end{subfigure}\hfill
+\begin{subfigure}[b]{0.49\textwidth}
+\includegraphics[width=\textwidth]{nasa_sls_exploded.jpg}
+\caption{Componentes del SLS.}
+\end{subfigure}
+\caption{El lanzador SLS. Imágenes: NASA.}
+\label{fig:sls}
+\end{figure}
 
 \subsection{Parámetros del vehículo}
 La \autoref{tab:params} recoge los parámetros empleados, tomados de fuentes públicas de la NASA y de los fabricantes. Son valores nominales o aproximados; los de la EUS siguen pendientes de confirmación oficial. Los del OMS-E de Orion proceden de informes técnicos de la NASA~\cite{ntrs2024oms,ntrs2018esm}. SpaceX no publica los datos del Starship HLS, por lo que sus valores son supuestos de este trabajo, elegidos para ser coherentes (relación empuje/peso lunar de \num{3} a \num{6} y reserva de propelente tras el alunizaje).
@@ -109,9 +182,9 @@ Luna & $\mu_L$; $R_L$; $d_{TL}$ & \SI{4.9048695e12}{m^3/s^2}; \SI{1737.4}{km}; \
 \end{table}
 
 %==========================================================================
-\section{Modelo físico}
+\section{Fase 1: ascenso atmosférico}\label{sec:f1}
 %==========================================================================
-\subsection{Fase 1: ascenso atmosférico en el marco inercial ECI}
+\subsection{Modelo físico en el marco inercial ECI}
 El estado del vehículo es $\vect Y=[\vect r,\vect v,m]^T\in\mathbb R^7$ en el marco geocéntrico inercial ECI (J2000). Como el marco es inercial, la segunda ley de Newton \emph{no} incluye fuerzas ficticias:
 \begin{align}
 \dot{\vect r} &= \vect v, \label{eq:asc1}\\
@@ -150,141 +223,16 @@ con $A_{ref}=\SI{55.4}{m^2}$ y $C_D(M)$ interpolado de una tabla representativa 
 que es óptima para empuje en el vacío en un campo gravitatorio uniforme (problema de Lawden, base del guiado PEG)~\cite{curtis2013}. El plano de vuelo de este tramo se define con la velocidad \emph{inercial}: con la velocidad relativa al aire, el empuje seguía el ``este local'' y la inclinación derivaba de \ang{28.6} a \ang{31.7}. Los parámetros $\theta_0=\SI{0.4929}{rad}$ y $\theta_f=\SI{0.1530}{rad}$ se obtuvieron resolviendo con \texttt{fsolve} las condiciones $h_{MECO}=\SI{160}{km}$ y $\gamma_{MECO}=0$.
 
 \paragraph{Estrangulamiento.} Como en el SLS real, la aceleración por empuje se limita a \SI{3}{g}: cuando $T/m$ superaría ese valor, los RS-25 reducen su empuje y su gasto másico en la misma proporción, dentro de su rango operativo (del 67 al 109\,\% del nivel nominal). Los SRB no se pueden estrangular.
-
-\subsection{Fase 2: tránsito cislunar como problema restringido de tres cuerpos}
-Tras la TLI, el vehículo se mueve sin empuje ni arrastre. Se consideran la Tierra y la Luna como masas puntuales y la Luna en órbita circular de radio $d$ en el plano $XY$. En coordenadas geocéntricas, el origen se acelera hacia la Luna, por lo que aparece el \emph{término indirecto}:
-\begin{equation}
-\ddot{\vect r} = -\mu_E\frac{\vect r}{\|\vect r\|^3}
-+\mu_L\left[\frac{\vect r_L(t)-\vect r}{\|\vect r_L(t)-\vect r\|^3}-\frac{\vect r_L(t)}{\|\vect r_L(t)\|^3}\right].
-\label{eq:nbody}
-\end{equation}
-Para que \eqref{eq:nbody} sea dinámicamente consistente, la órbita lunar prescrita debe ser solución del problema de dos cuerpos Tierra--Luna, lo que fija el movimiento medio por la tercera ley de Kepler:
-\begin{equation}
-n=\sqrt{\frac{\mu_E+\mu_L}{d^3}}=\SI{2.6653e-6}{rad/s}.
-\end{equation}
-Con este valor, \eqref{eq:nbody} es exactamente el Problema Restringido Circular de Tres Cuerpos (CR3BP). El movimiento medio sidéreo observado (\SI{2.6617e-6}{rad/s}) difiere un 0.14\,\% por las perturbaciones solares, que el modelo no incluye.
-
-\paragraph{Invariantes.} Como $\vect r_L$ depende del tiempo, el hamiltoniano geocéntrico no es autónomo y la energía $\varepsilon=\tfrac12v^2-\mu_E/r-\mu_L/\|\vect r-\vect r_L\|$ \emph{no} se conserva. En el marco baricéntrico que rota con $\vect\omega=n\uvec z$ el sistema es autónomo y se conserva la integral de Jacobi~\cite{szebehely1967}:
-\begin{equation}
-E_J=\tfrac12\|\vect v_{rot}\|^2-\tfrac12n^2(x_b^2+y_b^2)-\frac{\mu_E}{r_1}-\frac{\mu_L}{r_2},\qquad C_J=-2E_J,
-\label{eq:jacobi}
-\end{equation}
-donde $\vect\rho=\vect r-\tfrac{\mu_L}{\mu_E+\mu_L}\vect r_L$, $\vect v_{rot}=\dot{\vect\rho}-\vect\omega\times\vect\rho$, $r_1=\|\vect r\|$ y $r_2=\|\vect r-\vect r_L\|$. La integral \eqref{eq:jacobi} se usa como diagnóstico de la calidad del integrador.
-
-\subsection{Fase 4: CR3BP adimensional y la NRHO de Gateway}
-Para las órbitas periódicas y la transferencia se usa el mismo modelo en forma adimensional, con longitud $L=d$, tiempo $1/n$ y $\mu=\mu_L/(\mu_E+\mu_L)$, en el marco baricéntrico rotante (Tierra en $(-\mu,0,0)$, Luna en $(1-\mu,0,0)$)~\cite{szebehely1967}:
-\begin{equation}
-\ddot x-2\dot y=\Omega_x,\quad \ddot y+2\dot x=\Omega_y,\quad \ddot z=\Omega_z,\qquad
-\Omega=\tfrac12(x^2+y^2)+\frac{1-\mu}{r_1}+\frac{\mu}{r_2}.
-\label{eq:cr3bp}
-\end{equation}
-Las sensibilidades se obtienen integrando a la vez la matriz de transición de estados, $\dot\Phi=A(t)\Phi$ con $A=\left[\begin{smallmatrix}0&I\\ \Omega_{\vect r\vect r}&2J\end{smallmatrix}\right]$ (42 ecuaciones, DOP853 con tolerancias de $10^{-12}$). Las órbitas de halo son simétricas respecto al plano $xz$: partiendo de $(x_0,0,z_0,0,\dot y_0,0)$, basta anular $\dot x$ y $\dot z$ en el siguiente cruce de $y=0$. Esa \emph{corrección diferencial} es un Newton de $2\times2$ sobre $(x_0,\dot y_0)$ o $(z_0,\dot y_0)$ construido con $\Phi$~\cite{howell2001}. La familia L2 sur se recorre por continuación natural, y la NRHO 9:2 es el miembro con periodo igual a $2/9$ del mes sinódico, que se localiza por el método de la secante.
-
-\paragraph{Transferencia TLI $\rightarrow$ NRHO.} La llegada directa al perilunio es cara: en el marco rotante, la nave llega con velocidad casi opuesta a la de la NRHO. Por eso, como Artemis~I~\cite{esa2022orion}, se usan un sobrevuelo lunar propulsado (OPF) y una inserción (NRI) días después. La trayectoria se divide en $N$ tramos con estados iniciales $\vect X_i$ y duraciones $\Delta T_i$ (\emph{disparo múltiple}); la continuidad exige $\vect\varphi(\vect X_i,\Delta T_i)-\vect X_{i+1}=\vect 0$, salvo en los nodos de encendido, donde solo se exige la posición. Su jacobiano por bloques se arma con las STM de cada tramo ($\partial/\partial\vect X_i=\Phi_i$, $\partial/\partial\Delta T_i=\vect f(\vect\varphi)$). Sobre esas restricciones se minimiza $|\Delta\vect v_{TLI}|+|\Delta\vect v_{OPF}|+|\Delta\vect v_{NRI}|$ con SLSQP y gradientes analíticos. Las variables incluyen la fase de inserción en la NRHO y el ángulo del punto de la TLI en la órbita de aparcamiento, que equivale a elegir la ventana de lanzamiento. La semilla se obtiene propagando \emph{hacia atrás} desde la NRHO con una NRI pequeña y eligiendo las trayectorias que rozan la Luna.
-
-\subsection{Fase 5: descenso en el marco fijo a la Luna}
-La Luna rota de forma sincrónica, así que en este modelo el marco fijo a ella (MF) gira con la misma $\vect\omega=n\uvec z$ que el marco rotante del CR3BP. Sus ejes son $\uvec x$ hacia la Tierra media y $\uvec z$ hacia el polo norte, es decir, el marco rotante girado \ang{180} en $z$. En el MF sí aparecen fuerzas ficticias, al contrario que en el ascenso:
-\begin{equation}
-\ddot{\vect r}=\nabla U_L(\vect r)+\mu_E\!\left[\frac{\vect r_E-\vect r}{\|\vect r_E-\vect r\|^3}-\frac{\vect r_E}{\|\vect r_E\|^3}\right]-2\vect\omega\times\dot{\vect r}-\vect\omega\times(\vect\omega\times\vect r)+\frac{\vect T}{m},
-\qquad \dot m=-\frac{\|\vect T\|}{I_{sp}g_0},
-\label{eq:descent}
-\end{equation}
-donde el término de marea terrestre es el mismo término indirecto de \eqref{eq:nbody}, lo que hace el modelo coherente con la NRHO. El potencial lunar se desarrolla en armónicos esféricos,
-\begin{equation}
-U_L=\frac{\mu_L}{r}\sum_{n=0}^{N}\left(\frac{R_L}{r}\right)^n\sum_{m=0}^{n}\bar P_{nm}(\sin\phi)\left(\bar C_{nm}\cos m\lambda+\bar S_{nm}\sin m\lambda\right),
-\end{equation}
-con los coeficientes GRGM1200A de GRAIL~\cite{zuber2013,goossens2016}, truncados en $N=100$ (descargados del Planetary Data System de la NASA). El gradiente en $(r,\phi,\lambda)$ contiene factores $1/\cos\phi$ que divergen justo en el polo sur, donde se aterriza. Por eso se usa la formulación de Pines~\cite{pines1973}: con los cosenos directores $s,t,u$ y los polinomios de Helmholtz $\bar A_{nm}(u)$, que cumplen $\bar P_{nm}(\sin\phi)\cos m\lambda=\bar A_{nm}(u)\,\mathrm{Re}(s+\mathrm i t)^m$, el potencial y su gradiente son polinómicos y no tienen singularidades. Los $\bar A_{nm}$ se calculan por la recurrencia estable totalmente normalizada,
-\begin{equation}
-\bar A_{nm}=\sqrt{\tfrac{(2n+1)(2n-1)}{(n-m)(n+m)}}\,u\,\bar A_{n-1,m}-\sqrt{\tfrac{(2n+1)(n+m-1)(n-m-1)}{(2n-3)(n+m)(n-m)}}\,\bar A_{n-2,m},
-\end{equation}
-porque sin normalizar, $(2n-1)!!$ supera $10^{150}$ en $n=100$.
-
-%==========================================================================
-\section{Métodos numéricos}
-%==========================================================================
-\subsection{Régimen no conservativo: Dormand--Prince RK45 con eventos}
+\subsection{Método: Dormand--Prince RK45 con eventos}
 El sistema \eqref{eq:asc1}--\eqref{eq:asc3} se integra con el par embebido 5(4) de Dormand--Prince~\cite{dormand1980} mediante \texttt{scipy.integrate\allowbreak.solve\_ivp} ($\mathrm{rtol}=10^{-9}$, $\mathrm{atol}=10^{-6}$, $\Delta t_{\max}=\SI{0.5}{s}$). La estimación del error local ajusta el paso y resuelve con precisión las variaciones rápidas cerca de Max-Q y del pico transónico de $C_D$. Cabe precisar que RK45 es un método \emph{explícito}: no es adecuado para problemas rígidos (\emph{stiff}), pero el ascenso no lo es, ya que las escalas de tiempo de masa, aerodinámica y gravedad son comparables (de segundos a minutos). Las discontinuidades físicas se manejan con detección de eventos por raíces: el fin de combustión de los SRB ($t=t_b$) detiene la integración, se descarta la masa seca de los SRB (salto de masa con $\vect r,\vect v$ continuos) y se reinicia en la fase \emph{solo Core} hasta el evento de MECO ($m=m_{seca,Core}+m_{sup}$). Además, un evento terminal vigila el impacto con el suelo.
-
-\subsection{Régimen conservativo: Velocity Verlet (Störmer--Verlet)}
-Para $\ddot{\vect r}=\vect a(\vect r,t)$, el esquema \emph{kick--drift--kick} es
-\begin{equation}
-\vect v_{n+\frac12}=\vect v_n+\tfrac{\Delta t}{2}\vect a(\vect r_n,t_n),\quad
-\vect r_{n+1}=\vect r_n+\Delta t\,\vect v_{n+\frac12},\quad
-\vect v_{n+1}=\vect v_{n+\frac12}+\tfrac{\Delta t}{2}\vect a(\vect r_{n+1},t_{n+1}).
-\end{equation}
-Es una composición de flujos exactos de los subhamiltonianos cinético y potencial, por lo que es \emph{simpléctico}, simétrico (reversible) y de orden~2. Requiere una sola evaluación de fuerzas por paso, porque $\vect a(\vect r_{n+1})$ se reutiliza. Por el análisis de error regresivo, Verlet conserva exactamente un hamiltoniano modificado $\tilde H=H+\mathcal O(\Delta t^2)$, de modo que el error de energía permanece acotado durante tiempos exponencialmente largos, sin deriva secular~\cite{hairer2006}. Para fuerzas centrales conserva además exactamente el momento angular, por ser un integrador variacional con simetría rotacional. Como referencia se implementaron RK4 clásico de paso fijo (orden 4, no simpléctico) y DOP853 adaptativo (orden 8).
-
-\subsection{Método del disparo para la TLI}
-Dado un estado de aparcamiento $\vect x_0$ y un tiempo de vuelo $t_f$, se busca $\Delta\vect v$ tal que
-\begin{equation}
-\vect F(\Delta\vect v)=\vect r\big(t_f;\,\vect r_0,\vect v_0+\Delta\vect v\big)-\vect r_{obj}=\vect 0,
-\qquad \vect r_{obj}=\vect r_L(t_f)+\vect\delta,
-\end{equation}
-donde $\vect\delta$ sitúa el objetivo a \RTliFlybyAltKm~\si{km} sobre la superficie lunar. Cada evaluación de $\vect F$ propaga \eqref{eq:nbody} con DOP853 ($\mathrm{rtol}=10^{-12}$). El Algoritmo~\ref{alg:shoot} resume el procedimiento de Newton--Raphson con jacobiano por diferencias centrales ($h=\SI{1}{cm/s}$, error $\mathcal O(h^2)$, equilibrado frente a la cancelación por redondeo $\sim\epsilon_{mach}^{1/3}$), región de confianza ($\|\vect d\|\le\SI{500}{m/s}$) y búsqueda lineal con retroceso.
-
-\paragraph{Inicialización kepleriana.} La convergencia de Newton es local. En una primera versión, la semilla vis-viva (apogeo en dirección opuesta al encendido) no tenía en cuenta dónde estaría la Luna en $t_f$, el residuo inicial era de unos \SI{677000}{km} y el método no convergía. Ahora se resuelve la ecuación de Kepler: para una elipse de perigeo $r_p$ y apogeo $r_a$, el tiempo de vuelo hasta $r=\|\vect r_{obj}\|$ es
-\begin{equation}
-t(r_a)=\sqrt{a^3/\mu_E}\,(E-e\sin E),\qquad \cos E=\frac{1-r/a}{e},
-\end{equation}
-y se halla $r_a$ con $t(r_a)=t_f$ por el método de Brent. La anomalía verdadera $\nu$ correspondiente fija el punto de encendido a $\nu$ radianes por detrás de la dirección de $\vect r_{obj}$. Con esta semilla ($\nu=\RTliTransferAngleDeg^\circ$, $r_a=\RTliApogeeKkm\times10^{3}~\si{km}$), el residuo inicial cae a \RTliInitialResidualKm~\si{km}, causado únicamente por la gravedad lunar.
-
-\begin{table}[ht]
-\centering
-\refstepcounter{table}\label{alg:shoot}
-\fbox{\begin{minipage}{0.92\textwidth}
-\textbf{Algoritmo \thetable.} Newton--Raphson amortiguado para el disparo.
-\begin{enumerate}\setlength\itemsep{1pt}
-  \item $\Delta\vect v\gets$ semilla kepleriana; $\vect F\gets\vect F(\Delta\vect v)$.
-  \item Mientras $\|\vect F\|>\mathrm{tol}$ y $k<k_{\max}$:
-  \begin{enumerate}
-    \item $J_{:,j}\gets[\vect F(\Delta\vect v+h\vect e_j)-\vect F(\Delta\vect v-h\vect e_j)]/2h$, \ $j=1,2,3$.
-    \item Resolver $J\vect d=-\vect F$; si $\|\vect d\|>d_{\max}$, $\vect d\gets d_{\max}\vect d/\|\vect d\|$.
-    \item $\alpha\gets1$; mientras $\|\vect F(\Delta\vect v+\alpha\vect d)\|\ge\|\vect F\|$ (máx.\ 8 veces), $\alpha\gets\alpha/2$.
-    \item $\Delta\vect v\gets\Delta\vect v+\alpha\vect d$; $\vect F\gets\vect F(\Delta\vect v)$.
-  \end{enumerate}
-\end{enumerate}
-\end{minipage}}
-\end{table}
-
-\subsection{Guiado del descenso: E-guidance}
-El descenso sigue el perfil del Apolo~\cite{klumpp1974}. Primero, una maniobra impulsiva (DOI) poco antes del perilunio norte de la NRHO deja una elipse con periapsis a \SI{15}{km}, media vuelta más allá, sobre el sur. En ese periapsis empieza el descenso propulsado (PDI). La DOI se adelanta lo justo para que el PDI quede a \SI{480}{km} del sitio, una distancia parecida a la del Apolo. El tramo propulsado se divide en frenado, aproximación y descenso vertical, cada uno con un objetivo $(\vect r_f,\vect v_f)$ y un instante final fijo. En cada tramo se aplica la ley de energía mínima~\cite{dsouza1997}:
-\begin{equation}
-\vect a_T=\frac{6}{t_{go}^2}\Big[\vect r_f-\big(\vect r+\vect v\,t_{go}+\tfrac12\vect g\,t_{go}^2\big)\Big]-\frac{2}{t_{go}}\Big[\vect v_f-(\vect v+\vect g\,t_{go})\Big],
-\end{equation}
-que se recalcula en cada evaluación de la dinámica (lazo cerrado) y corrige así las perturbaciones de los mascons. Aquí $\vect g$ es la aceleración no propulsiva de \eqref{eq:descent}. El empuje $m\|\vect a_T\|$ se satura entre el 10 y el 100\,\% del máximo. En los últimos \SI{5}{s} de cada tramo, donde $t_{go}\to0$ hace singular la ley, se pasa a mantener la velocidad objetivo. La integración usa DOP853 con un evento terminal de contacto con el suelo, de nuevo un régimen no conservativo con masa variable, como el ascenso.
-
-%==========================================================================
-\section{Revisión de consistencia física y matemática}\label{sec:revision}
-%==========================================================================
-La revisión del código y del documento preliminar detectó y corrigió los siguientes problemas:
-\begin{enumerate}
-  \item \textbf{Balance de masa de los SRB.} Con empuje constante de \SI{16}{MN} por SRB e $I_{sp}=\SI{268}{s}$, el propelente se agotaba a los \SI{103}{s}, pero los SRB seguían empujando hasta los \SI{126}{s}, consumiendo en ese intervalo unas \SI{280}{t} de la masa de la etapa central. Se sustituyó por el perfil regresivo $k f(t)$, que conserva la masa exactamente.
-  \item \textbf{Eventos con constantes fijas} (\SI{126}{s}, \SI{180}{t}) que ignoraban la configuración: ahora se generan a partir de \texttt{AscentConfig}.
-  \item \textbf{Trayectoria de ascenso no física.} El programa original (giro por gravedad puro con un \emph{kick} de \SI{0.035}{rad}) hacía que el vehículo impactara contra el suelo a los \SI{388}{s}, y la demostración solo integraba hasta los \SI{126}{s}. Se añadieron la secuencia completa con separación y MECO y la ley de tangente lineal.
-  \item \textbf{Movimiento medio lunar inconsistente} con $\mu_E+\mu_L$ y $d$: impedía que la integral de Jacobi fuera un invariante exacto.
-  \item \textbf{Diagnóstico energético inadecuado.} La energía geocéntrica no es conservada con la Luna activa; se añadió la integral de Jacobi \eqref{eq:jacobi}.
-  \item \textbf{Atmósfera y guiado.} La densidad exponencial sobrestimaba un factor~2 la densidad a \SI{30}{km}, el guiado en el vacío seguía la velocidad relativa al aire (la inclinación derivaba \ang{3.1}) y no había estrangulamiento (\num{3.5}\,$g$ en el MECO). Se corrigieron los tres y se volvió a ajustar el guiado.
-  \item \textbf{Documento:} la ecuación del ascenso mezclaba los marcos ECI y ECEF; se justificaba RK45 por la rigidez del problema; se afirmaba la conservación exacta de la energía con Verlet; faltaba el término indirecto; y se citaban como implementados los armónicos esféricos, el NRHO y el HLS, que no lo están. Además, se sustituyó una referencia no verificable por documentos oficiales de la NASA.
-\end{enumerate}
-
-%==========================================================================
-\section{Verificación}
-%==========================================================================
-El paquete cuenta con más de 130 pruebas automáticas (\texttt{pytest}), que corren en integración continua y verifican, entre otros aspectos, la consistencia dimensional de las constantes; que la relación empuje/peso al despegue esté en $[1.2,2]$ (el modelo da $\approx1.41$); la conservación de masa de los SRB, por cuadratura, con error relativo menor que $10^{-6}$; las capas de la atmósfera US76 ($a_0=\SI{340.3}{m/s}$); el pico transónico de $C_D$; la reutilización de aceleraciones y la reversibilidad de Verlet; la conservación de la integral de Jacobi con la Luna activa; la deriva de RK4 frente al error acotado de Verlet; y la convergencia del método del disparo. Para las fases nuevas se comprueba que la NRHO es periódica y que su monodromía tiene determinante~1; que el jacobiano por bloques del disparo múltiple coincide con diferencias finitas; y que cada tramo de la transferencia, repropagado en el modelo geocéntrico independiente, cae en el siguiente con menos de \SI{1}{km} y \SI{1}{m/s}. En el campo lunar se verifica que los $\bar P_{nm}$ coinciden con \texttt{scipy} hasta $n=20$, que el grado~0 es la masa puntual, que con solo $\bar C_{20}$ se recupera la fórmula analítica de $J_2$ y que el gradiente de Pines coincide con diferencias finitas \emph{sobre el polo}. Del descenso se comprueba el criterio de aterrizaje: menos de \SI{1}{m/s}, menos de \SI{100}{m} del sitio y masa final mayor que la seca.
-
-\paragraph{Orden de convergencia.} Para la órbita circular a \SI{400}{km}, cuya solución exacta tras un periodo es la posición inicial, el error de posición escala como $\Delta t^{\ROrderVerlet}$ para Verlet y como $\Delta t^{\ROrderRkFour}$ para RK4 (\autoref{fig:orden}), lo que confirma los órdenes teóricos 2 y 4.
-
+\subsection{Resultados}
 \begin{figure}[ht]
 \centering
-\includegraphics[width=0.62\textwidth]{fig04_orden_convergencia.pdf}
-\caption{Error de posición tras una órbita frente al paso temporal. Las pendientes ajustadas coinciden con los órdenes teóricos.}
-\label{fig:orden}
+\includegraphics[width=0.8\textwidth]{viz_ascenso.png}
+\caption{El SLS durante el ascenso sobre Florida, en el visualizador. La silueta no está a escala.}
+\label{fig:vizasc}
 \end{figure}
 
-%==========================================================================
-\section{Resultados y discusión}
-%==========================================================================
-\subsection{Ascenso atmosférico}
 La \autoref{fig:ascenso} muestra el perfil de ascenso y la \autoref{tab:asc} resume los eventos. El vehículo supera Mach~1 a los \RTMachOneS~\si{s} ($h=\RHMachOneKm~\si{km}$) y alcanza Max-Q de \RMaxqKpa~\si{kPa} a los \RTMaxqS~\si{s} ($h=\RHMaxqKm~\si{km}$, $M=\RMachMaxq$), valores del mismo orden que los publicados para el SLS (unos \SI{30}{kPa}). Max-Q ocurre en régimen supersónico bajo porque $q=\tfrac12\rho v^2$ resulta de competir entre el aumento de $v$ y la caída exponencial de $\rho$. En la separación de los SRB ($t=\RTSrbSepS~\si{s}$, $h=\RHSrbSepKm~\si{km}$) la masa salta en las \SI{199.6}{t} de estructura descartada y la aceleración sensada cae de forma abrupta. Durante la fase de la etapa central, la aceleración crece como $T/m(t)$ hasta llegar a \SI{3}{g}; desde ahí los RS-25 se estrangulan y la aceleración máxima queda en \RMaxG\,$g_0$. El estrangulamiento solo actúa en los últimos segundos y alarga la combustión unos \SI{2}{s}.
 
 \begin{figure}[p]
@@ -320,7 +268,45 @@ MECO & \RTMecoS & \RHMecoKm & $v=\RVMecoKms~\si{km/s}$, $\gamma=\ang{\RFpaMecoDe
 
 \paragraph{Presupuesto de la EUS.} En el MECO, la velocidad inercial (\RVMecoKms~\si{km/s}) es inferior a la circular a \SI{160}{km} (\RVCircMecoKms~\si{km/s}): la etapa central del Block~1B deja el vehículo en una trayectoria suborbital y la EUS debe completar la inserción con $\Delta v\approx\RDvInsertionKms~\si{km/s}$. Con la ecuación de Tsiolkovsky, la EUS cargada con \REusPayloadT~\si{t} de carga útil dispone de $\Delta v_{EUS}=I_{sp}g_0\ln(m_0/m_f)=\RDvEusTotalKms~\si{km/s}$. Tras la inserción y la TLI calculada (\autoref{sec:tli}) quedan unas \REusPropRemainingT~\si{t} de propelente, lo que muestra que la misión es factible dentro del modelo impulsivo (sin pérdidas por gravedad durante las combustiones finitas).
 
-\subsection{Comparación de integradores en el régimen conservativo}
+%==========================================================================
+\section{Fase 2: tránsito y conservación numérica}\label{sec:f2}
+%==========================================================================
+\subsection{Modelo: problema restringido de tres cuerpos}
+Tras la TLI, el vehículo se mueve sin empuje ni arrastre. Se consideran la Tierra y la Luna como masas puntuales y la Luna en órbita circular de radio $d$ en el plano $XY$. En coordenadas geocéntricas, el origen se acelera hacia la Luna, por lo que aparece el \emph{término indirecto}:
+\begin{equation}
+\ddot{\vect r} = -\mu_E\frac{\vect r}{\|\vect r\|^3}
++\mu_L\left[\frac{\vect r_L(t)-\vect r}{\|\vect r_L(t)-\vect r\|^3}-\frac{\vect r_L(t)}{\|\vect r_L(t)\|^3}\right].
+\label{eq:nbody}
+\end{equation}
+Para que \eqref{eq:nbody} sea dinámicamente consistente, la órbita lunar prescrita debe ser solución del problema de dos cuerpos Tierra--Luna, lo que fija el movimiento medio por la tercera ley de Kepler:
+\begin{equation}
+n=\sqrt{\frac{\mu_E+\mu_L}{d^3}}=\SI{2.6653e-6}{rad/s}.
+\end{equation}
+Con este valor, \eqref{eq:nbody} es exactamente el Problema Restringido Circular de Tres Cuerpos (CR3BP). El movimiento medio sidéreo observado (\SI{2.6617e-6}{rad/s}) difiere un 0.14\,\% por las perturbaciones solares, que el modelo no incluye.
+
+\paragraph{Invariantes.} Como $\vect r_L$ depende del tiempo, el hamiltoniano geocéntrico no es autónomo y la energía $\varepsilon=\tfrac12v^2-\mu_E/r-\mu_L/\|\vect r-\vect r_L\|$ \emph{no} se conserva. En el marco baricéntrico que rota con $\vect\omega=n\uvec z$ el sistema es autónomo y se conserva la integral de Jacobi~\cite{szebehely1967}:
+\begin{equation}
+E_J=\tfrac12\|\vect v_{rot}\|^2-\tfrac12n^2(x_b^2+y_b^2)-\frac{\mu_E}{r_1}-\frac{\mu_L}{r_2},\qquad C_J=-2E_J,
+\label{eq:jacobi}
+\end{equation}
+donde $\vect\rho=\vect r-\tfrac{\mu_L}{\mu_E+\mu_L}\vect r_L$, $\vect v_{rot}=\dot{\vect\rho}-\vect\omega\times\vect\rho$, $r_1=\|\vect r\|$ y $r_2=\|\vect r-\vect r_L\|$. La integral \eqref{eq:jacobi} se usa como diagnóstico de la calidad del integrador.
+\subsection{Método: Velocity Verlet}
+Para $\ddot{\vect r}=\vect a(\vect r,t)$, el esquema \emph{kick--drift--kick} es
+\begin{equation}
+\vect v_{n+\frac12}=\vect v_n+\tfrac{\Delta t}{2}\vect a(\vect r_n,t_n),\quad
+\vect r_{n+1}=\vect r_n+\Delta t\,\vect v_{n+\frac12},\quad
+\vect v_{n+1}=\vect v_{n+\frac12}+\tfrac{\Delta t}{2}\vect a(\vect r_{n+1},t_{n+1}).
+\end{equation}
+Es una composición de flujos exactos de los subhamiltonianos cinético y potencial, por lo que es \emph{simpléctico}, simétrico (reversible) y de orden~2. Requiere una sola evaluación de fuerzas por paso, porque $\vect a(\vect r_{n+1})$ se reutiliza. Por el análisis de error regresivo, Verlet conserva exactamente un hamiltoniano modificado $\tilde H=H+\mathcal O(\Delta t^2)$, de modo que el error de energía permanece acotado durante tiempos exponencialmente largos, sin deriva secular~\cite{hairer2006}. Para fuerzas centrales conserva además exactamente el momento angular, por ser un integrador variacional con simetría rotacional. Como referencia se implementaron RK4 clásico de paso fijo (orden 4, no simpléctico) y DOP853 adaptativo (orden 8).
+\paragraph{Orden de convergencia.} Para la órbita circular a \SI{400}{km}, cuya solución exacta tras un periodo es la posición inicial, el error de posición escala como $\Delta t^{\ROrderVerlet}$ para Verlet y como $\Delta t^{\ROrderRkFour}$ para RK4 (\autoref{fig:orden}), lo que confirma los órdenes teóricos 2 y 4.
+
+\begin{figure}[ht]
+\centering
+\includegraphics[width=0.62\textwidth]{fig04_orden_convergencia.pdf}
+\caption{Error de posición tras una órbita frente al paso temporal. Las pendientes ajustadas coinciden con los órdenes teóricos.}
+\label{fig:orden}
+\end{figure}
+\subsection{Comparación de integradores}
 La \autoref{fig:conserv} compara Verlet, RK4 y DOP853 durante \RNOrbitsCmp{} órbitas a \SI{400}{km}, con \RStepsPerOrbitCmp{} pasos por órbita para los métodos de paso fijo. Pese a ser de menor orden, el error de energía de Verlet oscila sin crecer (máximo \RVerletMaxDe), en concordancia con la conservación del hamiltoniano modificado. El de RK4 crece monótonamente hasta \RRkFourFinalDe{}, una disipación numérica que se traduce en un decaimiento artificial de la órbita. Verlet conserva el momento angular hasta el redondeo (\RVerletMaxDh). DOP853 con tolerancias estrictas logra errores menores (\RDopEightFiveThreeFinalDe), pero también muestra deriva lineal y requiere muchas más evaluaciones de fuerza. Para propagaciones largas con un presupuesto de cómputo fijo, el integrador simpléctico ofrece el comportamiento cualitativo correcto.
 
 \begin{figure}[ht]
@@ -329,8 +315,58 @@ La \autoref{fig:conserv} compara Verlet, RK4 y DOP853 durante \RNOrbitsCmp{} ór
 \caption{Errores relativos de energía (a) y momento angular (b) en el problema de Kepler. Verlet: envolvente por órbita (línea) y oscilación instantánea (sombreado).}
 \label{fig:conserv}
 \end{figure}
+\subsection{Invariante de Jacobi}
+La \autoref{fig:jacobi} contrasta la energía geocéntrica, que varía un \RGeoEnergyMaxRel{} durante el encuentro lunar porque no es una constante del movimiento, con la integral de Jacobi, cuyo error relativo se mantiene en \RJacobiMaxRel. El error de $E_J$ se acumula casi por completo en la primera hora, cuando el vehículo está cerca del perigeo y el paso de \SI{1}{s} es menos pequeño frente a la escala de tiempo local. Después permanece constante, la firma del hamiltoniano modificado de un integrador simpléctico.
 
-\subsection{Inyección translunar}\label{sec:tli}
+\begin{figure}[ht]
+\centering
+\includegraphics[width=\textwidth]{fig08_jacobi.pdf}
+\caption{(a) Energía específica geocéntrica durante el tránsito; (b) error relativo de la integral de Jacobi con Verlet.}
+\label{fig:jacobi}
+\end{figure}
+
+%==========================================================================
+\section{Fase 3: inyección translunar}\label{sec:f3}
+%==========================================================================
+\subsection{Método del disparo}
+Dado un estado de aparcamiento $\vect x_0$ y un tiempo de vuelo $t_f$, se busca $\Delta\vect v$ tal que
+\begin{equation}
+\vect F(\Delta\vect v)=\vect r\big(t_f;\,\vect r_0,\vect v_0+\Delta\vect v\big)-\vect r_{obj}=\vect 0,
+\qquad \vect r_{obj}=\vect r_L(t_f)+\vect\delta,
+\end{equation}
+donde $\vect\delta$ sitúa el objetivo a \RTliFlybyAltKm~\si{km} sobre la superficie lunar. Cada evaluación de $\vect F$ propaga \eqref{eq:nbody} con DOP853 ($\mathrm{rtol}=10^{-12}$). El Algoritmo~\ref{alg:shoot} resume el procedimiento de Newton--Raphson con jacobiano por diferencias centrales ($h=\SI{1}{cm/s}$, error $\mathcal O(h^2)$, equilibrado frente a la cancelación por redondeo $\sim\epsilon_{mach}^{1/3}$), región de confianza ($\|\vect d\|\le\SI{500}{m/s}$) y búsqueda lineal con retroceso.
+
+\paragraph{Inicialización kepleriana.} La convergencia de Newton es local. En una primera versión, la semilla vis-viva (apogeo en dirección opuesta al encendido) no tenía en cuenta dónde estaría la Luna en $t_f$, el residuo inicial era de unos \SI{677000}{km} y el método no convergía. Ahora se resuelve la ecuación de Kepler: para una elipse de perigeo $r_p$ y apogeo $r_a$, el tiempo de vuelo hasta $r=\|\vect r_{obj}\|$ es
+\begin{equation}
+t(r_a)=\sqrt{a^3/\mu_E}\,(E-e\sin E),\qquad \cos E=\frac{1-r/a}{e},
+\end{equation}
+y se halla $r_a$ con $t(r_a)=t_f$ por el método de Brent. La anomalía verdadera $\nu$ correspondiente fija el punto de encendido a $\nu$ radianes por detrás de la dirección de $\vect r_{obj}$. Con esta semilla ($\nu=\RTliTransferAngleDeg^\circ$, $r_a=\RTliApogeeKkm\times10^{3}~\si{km}$), el residuo inicial cae a \RTliInitialResidualKm~\si{km}, causado únicamente por la gravedad lunar.
+
+\begin{table}[ht]
+\centering
+\refstepcounter{table}\label{alg:shoot}
+\fbox{\begin{minipage}{0.92\textwidth}
+\textbf{Algoritmo \thetable.} Newton--Raphson amortiguado para el disparo.
+\begin{enumerate}\setlength\itemsep{1pt}
+  \item $\Delta\vect v\gets$ semilla kepleriana; $\vect F\gets\vect F(\Delta\vect v)$.
+  \item Mientras $\|\vect F\|>\mathrm{tol}$ y $k<k_{\max}$:
+  \begin{enumerate}
+    \item $J_{:,j}\gets[\vect F(\Delta\vect v+h\vect e_j)-\vect F(\Delta\vect v-h\vect e_j)]/2h$, \ $j=1,2,3$.
+    \item Resolver $J\vect d=-\vect F$; si $\|\vect d\|>d_{\max}$, $\vect d\gets d_{\max}\vect d/\|\vect d\|$.
+    \item $\alpha\gets1$; mientras $\|\vect F(\Delta\vect v+\alpha\vect d)\|\ge\|\vect F\|$ (máx.\ 8 veces), $\alpha\gets\alpha/2$.
+    \item $\Delta\vect v\gets\Delta\vect v+\alpha\vect d$; $\vect F\gets\vect F(\Delta\vect v)$.
+  \end{enumerate}
+\end{enumerate}
+\end{minipage}}
+\end{table}
+\subsection{Resultados}\label{sec:tli}
+\begin{figure}[ht]
+\centering
+\includegraphics[width=0.8\textwidth]{viz_aparcamiento.png}
+\caption{Órbita de aparcamiento desde la que se calcula la TLI, en el visualizador.}
+\label{fig:vizpark}
+\end{figure}
+
 Desde una órbita circular de aparcamiento a \RHParkKm~\si{km}, el método del disparo converge en \RTliIterations{} iteraciones a $|\Delta\vect v|=\RTliDvMs~\si{m/s}$ con un residuo de \RTliFinalResidualM~m (\autoref{fig:shoot}). La convergencia es cuadrática en las últimas iteraciones, como corresponde a Newton cerca de la raíz, y $\kappa(J)\le\RCondMax$ indica un problema bien condicionado. El $\Delta v$ obtenido coincide con el valor clásico de una TLI (de \num{3.1} a \SI{3.2}{km/s}~\cite{curtis2013}) y difiere solo en \SI{4}{m/s} de la semilla kepleriana: la Luna modifica sobre todo la \emph{dirección} de llegada, no la energía requerida. Repropagada con Verlet ($\Delta t=\SI{1}{s}$), la trayectoria llega a \RVerletArrivalAltKm~\si{km} de altitud lunar, a \RVerletTargetMissKm~\si{km} del objetivo calculado con DOP853. Esta discrepancia corresponde al error de discretización de orden 2 amplificado por el encuentro hiperbólico.
 
 \begin{figure}[ht]
@@ -354,17 +390,20 @@ Desde una órbita circular de aparcamiento a \RHParkKm~\si{km}, el método del d
 \label{fig:shoot}
 \end{figure}
 
-\subsection{Invariante de Jacobi}
-La \autoref{fig:jacobi} contrasta la energía geocéntrica, que varía un \RGeoEnergyMaxRel{} durante el encuentro lunar porque no es una constante del movimiento, con la integral de Jacobi, cuyo error relativo se mantiene en \RJacobiMaxRel. El error de $E_J$ se acumula casi por completo en la primera hora, cuando el vehículo está cerca del perigeo y el paso de \SI{1}{s} es menos pequeño frente a la escala de tiempo local. Después permanece constante, la firma del hamiltoniano modificado de un integrador simpléctico.
+\paragraph{TLI aislada y TLI de la misión.} Este resultado corresponde al problema de la Fase~3: llegar a un punto a \RTliFlybyAltKm~km de la Luna. En la misión integrada, la TLI forma parte de la transferencia optimizada hacia la NRHO y vale \RMDvTliMs~m/s (\autoref{tab:dv}). Son dos problemas distintos, con objetivos y órbitas iniciales diferentes, y ambos valores están en el rango clásico de una TLI.
 
-\begin{figure}[ht]
-\centering
-\includegraphics[width=\textwidth]{fig08_jacobi.pdf}
-\caption{(a) Energía específica geocéntrica durante el tránsito; (b) error relativo de la integral de Jacobi con Verlet.}
-\label{fig:jacobi}
-\end{figure}
-
-\subsection{La NRHO 9:2 de Gateway}
+%==========================================================================
+\section{Fase 4: la NRHO de Gateway y la transferencia de Orion}\label{sec:f4}
+%==========================================================================
+\subsection{Modelo: CR3BP adimensional}
+Para las órbitas periódicas y la transferencia se usa el mismo modelo en forma adimensional, con longitud $L=d$, tiempo $1/n$ y $\mu=\mu_L/(\mu_E+\mu_L)$, en el marco baricéntrico rotante (Tierra en $(-\mu,0,0)$, Luna en $(1-\mu,0,0)$)~\cite{szebehely1967}:
+\begin{equation}
+\ddot x-2\dot y=\Omega_x,\quad \ddot y+2\dot x=\Omega_y,\quad \ddot z=\Omega_z,\qquad
+\Omega=\tfrac12(x^2+y^2)+\frac{1-\mu}{r_1}+\frac{\mu}{r_2}.
+\label{eq:cr3bp}
+\end{equation}
+Las sensibilidades se obtienen integrando a la vez la matriz de transición de estados, $\dot\Phi=A(t)\Phi$ con $A=\left[\begin{smallmatrix}0&I\\ \Omega_{\vect r\vect r}&2J\end{smallmatrix}\right]$ (42 ecuaciones, DOP853 con tolerancias de $10^{-12}$). Las órbitas de halo son simétricas respecto al plano $xz$: partiendo de $(x_0,0,z_0,0,\dot y_0,0)$, basta anular $\dot x$ y $\dot z$ en el siguiente cruce de $y=0$. Esa \emph{corrección diferencial} es un Newton de $2\times2$ sobre $(x_0,\dot y_0)$ o $(z_0,\dot y_0)$ construido con $\Phi$~\cite{howell2001}. La familia L2 sur se recorre por continuación natural, y la NRHO 9:2 es el miembro con periodo igual a $2/9$ del mes sinódico, que se localiza por el método de la secante.
+\subsection{La NRHO 9:2}
 La continuación de la familia de halos L2 sur, desde un miembro de la base de datos de órbitas periódicas del JPL, pasa de periodos de unos \SI{14}{d} a la región casi rectilínea (\autoref{fig:halo}). La NRHO 9:2 tiene un periodo de \RMNrhoPeriodD~d, perilunio a unos \SI{3250}{km} del centro de la Luna (\SI{1500}{km} de altitud) sobre el polo norte y apolunio a unos \SI{71000}{km} sobre el polo sur. Su índice de estabilidad $\nu=\RMNrhoStability$ indica una inestabilidad débil, la razón por la que Gateway la eligió: mantenerla cuesta poco y no hay eclipses largos~\cite{zimovan2017}.
 
 \begin{figure}[ht]
@@ -373,8 +412,9 @@ La continuación de la familia de halos L2 sur, desde un miembro de la base de d
 \caption{Familia de órbitas de halo L2 sur en el marco rotante centrado en la Luna, coloreada por periodo; en naranja, la NRHO 9:2.}
 \label{fig:halo}
 \end{figure}
-
-\subsection{Transferencia de Orion a la NRHO}
+\subsection{Método de la transferencia}
+La llegada directa al perilunio es cara: en el marco rotante, la nave llega con velocidad casi opuesta a la de la NRHO. Por eso, como Artemis~I~\cite{esa2022orion}, se usan un sobrevuelo lunar propulsado (OPF) y una inserción (NRI) días después. La trayectoria se divide en $N$ tramos con estados iniciales $\vect X_i$ y duraciones $\Delta T_i$ (\emph{disparo múltiple}); la continuidad exige $\vect\varphi(\vect X_i,\Delta T_i)-\vect X_{i+1}=\vect 0$, salvo en los nodos de encendido, donde solo se exige la posición. Su jacobiano por bloques se arma con las STM de cada tramo ($\partial/\partial\vect X_i=\Phi_i$, $\partial/\partial\Delta T_i=\vect f(\vect\varphi)$). Sobre esas restricciones se minimiza $|\Delta\vect v_{TLI}|+|\Delta\vect v_{OPF}|+|\Delta\vect v_{NRI}|$ con SLSQP y gradientes analíticos. Las variables incluyen la fase de inserción en la NRHO y el ángulo del punto de la TLI en la órbita de aparcamiento, que equivale a elegir la ventana de lanzamiento. La semilla se obtiene propagando \emph{hacia atrás} desde la NRHO con una NRI pequeña y eligiendo las trayectorias que rozan la Luna.
+\subsection{Resultados de la transferencia}
 La \autoref{fig:transfer} muestra la transferencia óptima y la \autoref{tab:dv} resume las maniobras. El OPF de \RMDvOpfMs~m/s ocurre a \RMOpfAltKm~km de altitud, \RMOpfAfterTliD~días después de la TLI, y la NRI de \RMDvNriMs~m/s a los \RMNriAfterTliD~días. Son valores del mismo orden que los de Artemis~I: unos \SI{180}{m/s} en el OPF y de \num{110} a \SI{150}{m/s} en la inserción en su órbita retrógrada distante~\cite{esa2022orion}. Orion con el I-Hab pasa de \RMOrionMassTliT~t a \RMOrionMassNrhoT~t. Llevando el I-Hab, su módulo de servicio puede dar \RMOrionDvCapabilityMs~m/s, de los que la transferencia usa el \RMOrionDvUsedPct\,\%. SLSQP termina por límite de iteraciones con mejoras menores que \SI{5}{m/s}: el resultado es un mínimo local, no necesariamente el global.
 
 \begin{figure}[ht]
@@ -383,8 +423,47 @@ La \autoref{fig:transfer} muestra la transferencia óptima y la \autoref{tab:dv}
 \caption{Transferencia TLI $\rightarrow$ OPF $\rightarrow$ NRI en el marco rotante Tierra--Luna. (a) Vista completa; (b) llegada vista de lado, centrada en la Luna, con la NRHO en verde.}
 \label{fig:transfer}
 \end{figure}
+\begin{figure}[ht]
+\centering
+\begin{subfigure}[b]{0.49\textwidth}
+\includegraphics[width=\textwidth]{viz_sobrevuelo.png}
+\caption{Sobrevuelo propulsado (OPF).}
+\end{subfigure}\hfill
+\begin{subfigure}[b]{0.49\textwidth}
+\includegraphics[width=\textwidth]{viz_nrho.png}
+\caption{Inserción en la NRHO (NRI).}
+\end{subfigure}
+\caption{La llegada a la Luna en el visualizador, en el marco rotante.}
+\label{fig:viznrho}
+\end{figure}
 
-\subsection{Descenso al polo sur}
+
+%==========================================================================
+\section{Fase 5: descenso al polo sur}\label{sec:f5}
+%==========================================================================
+\subsection{Modelo en el marco fijo a la Luna}
+La Luna rota de forma sincrónica, así que en este modelo el marco fijo a ella (MF) gira con la misma $\vect\omega=n\uvec z$ que el marco rotante del CR3BP. Sus ejes son $\uvec x$ hacia la Tierra media y $\uvec z$ hacia el polo norte, es decir, el marco rotante girado \ang{180} en $z$. En el MF sí aparecen fuerzas ficticias, al contrario que en el ascenso:
+\begin{equation}
+\ddot{\vect r}=\nabla U_L(\vect r)+\mu_E\!\left[\frac{\vect r_E-\vect r}{\|\vect r_E-\vect r\|^3}-\frac{\vect r_E}{\|\vect r_E\|^3}\right]-2\vect\omega\times\dot{\vect r}-\vect\omega\times(\vect\omega\times\vect r)+\frac{\vect T}{m},
+\qquad \dot m=-\frac{\|\vect T\|}{I_{sp}g_0},
+\label{eq:descent}
+\end{equation}
+donde el término de marea terrestre es el mismo término indirecto de \eqref{eq:nbody}, lo que hace el modelo coherente con la NRHO. El potencial lunar se desarrolla en armónicos esféricos,
+\begin{equation}
+U_L=\frac{\mu_L}{r}\sum_{n=0}^{N}\left(\frac{R_L}{r}\right)^n\sum_{m=0}^{n}\bar P_{nm}(\sin\phi)\left(\bar C_{nm}\cos m\lambda+\bar S_{nm}\sin m\lambda\right),
+\end{equation}
+con los coeficientes GRGM1200A de GRAIL~\cite{zuber2013,goossens2016}, truncados en $N=100$ (descargados del Planetary Data System de la NASA). El gradiente en $(r,\phi,\lambda)$ contiene factores $1/\cos\phi$ que divergen justo en el polo sur, donde se aterriza. Por eso se usa la formulación de Pines~\cite{pines1973}: con los cosenos directores $s,t,u$ y los polinomios de Helmholtz $\bar A_{nm}(u)$, que cumplen $\bar P_{nm}(\sin\phi)\cos m\lambda=\bar A_{nm}(u)\,\mathrm{Re}(s+\mathrm i t)^m$, el potencial y su gradiente son polinómicos y no tienen singularidades. Los $\bar A_{nm}$ se calculan por la recurrencia estable totalmente normalizada,
+\begin{equation}
+\bar A_{nm}=\sqrt{\tfrac{(2n+1)(2n-1)}{(n-m)(n+m)}}\,u\,\bar A_{n-1,m}-\sqrt{\tfrac{(2n+1)(n+m-1)(n-m-1)}{(2n-3)(n+m)(n-m)}}\,\bar A_{n-2,m},
+\end{equation}
+porque sin normalizar, $(2n-1)!!$ supera $10^{150}$ en $n=100$.
+\subsection{Método: E-guidance}
+El descenso sigue el perfil del Apolo~\cite{klumpp1974}. Primero, una maniobra impulsiva (DOI) poco antes del perilunio norte de la NRHO deja una elipse con periapsis a \SI{15}{km}, media vuelta más allá, sobre el sur. En ese periapsis empieza el descenso propulsado (PDI). La DOI se adelanta lo justo para que el PDI quede a \SI{480}{km} del sitio, una distancia parecida a la del Apolo. El tramo propulsado se divide en frenado, aproximación y descenso vertical, cada uno con un objetivo $(\vect r_f,\vect v_f)$ y un instante final fijo. En cada tramo se aplica la ley de energía mínima~\cite{dsouza1997}:
+\begin{equation}
+\vect a_T=\frac{6}{t_{go}^2}\Big[\vect r_f-\big(\vect r+\vect v\,t_{go}+\tfrac12\vect g\,t_{go}^2\big)\Big]-\frac{2}{t_{go}}\Big[\vect v_f-(\vect v+\vect g\,t_{go})\Big],
+\end{equation}
+que se recalcula en cada evaluación de la dinámica (lazo cerrado) y corrige así las perturbaciones de los mascons. Aquí $\vect g$ es la aceleración no propulsiva de \eqref{eq:descent}. El empuje $m\|\vect a_T\|$ se satura entre el 10 y el 100\,\% del máximo. En los últimos \SI{5}{s} de cada tramo, donde $t_{go}\to0$ hace singular la ley, se pasa a mantener la velocidad objetivo. La integración usa DOP853 con un evento terminal de contacto con el suelo, de nuevo un régimen no conservativo con masa variable, como el ascenso.
+\subsection{Resultados del descenso}
 La DOI de \RMDvDoiMs~m/s deja al HLS en una elipse que recorre en \RMCoastH~h hasta el PDI, a \SI{15}{km} de altitud y $\RMPdiLatDeg^\circ$ de latitud. Desde ahí, el descenso propulsado dura \RMPoweredS~s (\autoref{fig:descent}). El frenado reduce la velocidad horizontal de unos \SI{1.9}{km/s} a \SI{80}{m/s} en la \emph{high gate} (\SI{2}{km} de altura, \SI{6}{km} antes del sitio). La aproximación lleva al HLS a la \emph{low gate}, \SI{100}{m} sobre el sitio, y el descenso final vertical termina en contacto a \RMTouchdownSpeedMs~m/s, a \RMLandingErrorM~m del sitio (latitud $\RMSiteLatDeg^\circ$, longitud $\RMSiteLonDeg^\circ$). El empuje no supera el \RMMaxThrottlePct\,\% del máximo. Sus picos breves en las \emph{gates} se deben a que cada tramo tiene un objetivo nuevo y el E-guidance corrige de golpe la pequeña diferencia de velocidad que deja el anterior; un guiado real los suaviza solapando los tramos. El HLS pasa de \RMHlsMassInitialT~t a \RMHlsMassLandedT~t, por encima de su masa seca de \SI{120}{t}. El $\Delta v$ propulsado supera en unos \SI{400}{m/s} a la velocidad orbital en el PDI: son las pérdidas por gravedad de un descenso de varios minutos.
 
 El sitio es el punto más austral al que llega la traza sin cambio de plano, porque la NRHO tiene unos \ang{93} de inclinación. Está dentro de la franja de \ang{6} alrededor del polo sur donde la NASA ubicó las regiones candidatas de Artemis~III. Como la NRHO es periódica en el marco rotante, que coincide con el fijo a la Luna, esta geometría no depende de la fecha.
@@ -394,6 +473,19 @@ El sitio es el punto más austral al que llega la traza sin cambio de plano, por
 \includegraphics[width=\textwidth]{fig11_descenso.pdf}
 \caption{Descenso propulsado del HLS desde el PDI. (a) Altitud; (b) velocidades horizontal y vertical en el marco fijo a la Luna (escala logarítmica simétrica); (c) empuje ordenado por el E-guidance; (d) masa. Las líneas discontinuas marcan la \emph{high gate} y la \emph{low gate}.}
 \label{fig:descent}
+\end{figure}
+\begin{figure}[ht]
+\centering
+\begin{subfigure}[b]{0.49\textwidth}
+\includegraphics[width=\textwidth]{viz_doi.png}
+\caption{DOI: el HLS deja la NRHO; en rojo, el sitio.}
+\end{subfigure}\hfill
+\begin{subfigure}[b]{0.49\textwidth}
+\includegraphics[width=\textwidth]{viz_descenso.png}
+\caption{Descenso propulsado sobre el polo sur.}
+\end{subfigure}
+\caption{El descenso en el visualizador. El relieve fino de la Luna en las tomas cercanas es decorativo.}
+\label{fig:vizdesc}
 \end{figure}
 
 \subsection{Efecto de los mascons}
@@ -406,7 +498,10 @@ La \autoref{fig:mascons}a muestra la anomalía radial de la gravedad en la super
 \label{fig:mascons}
 \end{figure}
 
-\subsection{La misión completa}\label{sec:mision}
+%==========================================================================
+\section{La misión integrada y el visualizador}\label{sec:mision}
+%==========================================================================
+\subsection{Una sola trayectoria}
 El módulo \texttt{pipeline.py} encadena las cinco fases en una sola trayectoria continua de \RMMissionDays~días, que se exporta al visualizador 3D del repositorio. La \autoref{tab:dv} reúne el presupuesto de $\Delta v$.
 
 \begin{table}[ht]
@@ -428,6 +523,57 @@ Descenso propulsado & HLS & \RMDvPoweredMs & DOI + \RMCoastH~h \\
 \end{tabular}
 \end{table}
 
+\paragraph{Consistencia de la masa.} La masa mostrada cambia de vehículo a lo largo de la misión. En la DOI, la trayectoria pasa de Orion (\RMOrionMassNrhoT~t) al HLS, que parte de \RMHlsMassInitialT~t. La maniobra impulsiva de \RMDvDoiMs~m/s lo deja en \RMHlsMassPdiT~t según la ecuación de Tsiolkovsky, y esa masa no cambia durante el planeo hasta el PDI.
+
+\subsection{Exportación de datos}
+La trayectoria se remuestrea con un paso propio por fase y se guarda en \texttt{mission.json}, con unas \num{25000} muestras. Las maniobras impulsivas y las separaciones son discontinuidades, por lo que se conservan los estados inmediatamente anterior y posterior a cada salto, separados \SI{1}{ms}. Sin esa precaución, la interpolación reparte el salto a lo largo del último paso del integrador (\autoref{sec:revision}). El navegador interpola entre muestras con el mismo Hermite cúbico que el simulador.
+
+\subsection{Visualizador 3D}
+El visualizador, escrito con Three.js, reproduce la misión en unos \SI{2.5}{min}. Su objetivo es que la misión se entienda sin conocer el código, por lo que la interfaz se redujo a lo esencial: reproducción, línea de tiempo, panel de ciencia y ayuda (\autoref{fig:vizui}). Sus elementos principales son:
+\begin{itemize}
+  \item \textbf{Cámara guiada:} una toma por fase y por evento; mover la cámara activa el modo libre.
+  \item \textbf{Velocidad automática:} cada fase dura de 20 a 35 segundos, aunque en la misión dure de minutos a días.
+  \item \textbf{Línea de tiempo logarítmica:} el ancho de cada fase es proporcional al logaritmo de su duración, para que los \SI{8}{min} del ascenso sean visibles junto a los días de tránsito.
+  \item \textbf{Telemetría con sentido físico:} cerca de la Luna, la velocidad se mide respecto a su superficie. La velocidad inercial incluye \SI{1}{km/s} de movimiento orbital lunar y escondería el contacto a \SI{1}{m/s}.
+  \item \textbf{Tres marcos de referencia:} inercial, rotante Tierra--Luna y selenocéntrico. La NRHO solo se ve cerrada en el rotante.
+  \item \textbf{Fidelidad geométrica:} la Luna gira de forma síncrona, el sitio de alunizaje cae en su lugar y LC-39B coincide con Florida. Las naves no están a escala: su tamaño depende del cuerpo más cercano.
+\end{itemize}
+
+\begin{figure}[ht]
+\centering
+\includegraphics[width=\textwidth]{viz_interfaz.png}
+\caption{Interfaz del visualizador: telemetría, panel de ciencia con el presupuesto de $\Delta v$, tarjeta del evento y línea de tiempo.}
+\label{fig:vizui}
+\end{figure}
+
+\begin{figure}[ht]
+\centering
+\includegraphics[width=0.85\textwidth]{viz_final.png}
+\caption{Pantalla final con los resultados de la misión.}
+\label{fig:vizfin}
+\end{figure}
+
+
+%==========================================================================
+\section{Verificación y revisión crítica}\label{sec:verif}
+%==========================================================================
+\subsection{Pruebas automáticas}
+El paquete cuenta con 133 pruebas automáticas en Python (\texttt{pytest}), que corren en integración continua y verifican, entre otros aspectos, la consistencia dimensional de las constantes; que la relación empuje/peso al despegue esté en $[1.2,2]$ (el modelo da $\approx1.41$); la conservación de masa de los SRB, por cuadratura, con error relativo menor que $10^{-6}$; las capas de la atmósfera US76 ($a_0=\SI{340.3}{m/s}$); el pico transónico de $C_D$; la reutilización de aceleraciones y la reversibilidad de Verlet; la conservación de la integral de Jacobi con la Luna activa; la deriva de RK4 frente al error acotado de Verlet; y la convergencia del método del disparo. Para las fases nuevas se comprueba que la NRHO es periódica y que su monodromía tiene determinante~1; que el jacobiano por bloques del disparo múltiple coincide con diferencias finitas; y que cada tramo de la transferencia, repropagado en el modelo geocéntrico independiente, cae en el siguiente con menos de \SI{1}{km} y \SI{1}{m/s}. En el campo lunar se verifica que los $\bar P_{nm}$ coinciden con \texttt{scipy} hasta $n=20$, que el grado~0 es la masa puntual, que con solo $\bar C_{20}$ se recupera la fórmula analítica de $J_2$ y que el gradiente de Pines coincide con diferencias finitas \emph{sobre el polo}. Del descenso se comprueba el criterio de aterrizaje: menos de \SI{1}{m/s}, menos de \SI{100}{m} del sitio y masa final mayor que la seca.
+
+El visualizador añade 18 pruebas: transformaciones de marcos, interpolación, escala de la línea de tiempo y telemetría. Una de ellas comprueba que el contacto se reproduce a unos \SI{1}{m/s} con los datos exportados, y otra que las cifras mostradas coinciden con \texttt{results.json}.
+\subsection{Revisión de consistencia física y matemática}\label{sec:revision}
+La revisión del código y del documento preliminar detectó y corrigió los siguientes problemas:
+\begin{enumerate}
+  \item \textbf{Balance de masa de los SRB.} Con empuje constante de \SI{16}{MN} por SRB e $I_{sp}=\SI{268}{s}$, el propelente se agotaba a los \SI{103}{s}, pero los SRB seguían empujando hasta los \SI{126}{s}, consumiendo en ese intervalo unas \SI{280}{t} de la masa de la etapa central. Se sustituyó por el perfil regresivo $k f(t)$, que conserva la masa exactamente.
+  \item \textbf{Eventos con constantes fijas} (\SI{126}{s}, \SI{180}{t}) que ignoraban la configuración: ahora se generan a partir de \texttt{AscentConfig}.
+  \item \textbf{Trayectoria de ascenso no física.} El programa original (giro por gravedad puro con un \emph{kick} de \SI{0.035}{rad}) hacía que el vehículo impactara contra el suelo a los \SI{388}{s}, y la demostración solo integraba hasta los \SI{126}{s}. Se añadieron la secuencia completa con separación y MECO y la ley de tangente lineal.
+  \item \textbf{Movimiento medio lunar inconsistente} con $\mu_E+\mu_L$ y $d$: impedía que la integral de Jacobi fuera un invariante exacto.
+  \item \textbf{Diagnóstico energético inadecuado.} La energía geocéntrica no es conservada con la Luna activa; se añadió la integral de Jacobi \eqref{eq:jacobi}.
+  \item \textbf{Atmósfera y guiado.} La densidad exponencial sobrestimaba un factor~2 la densidad a \SI{30}{km}, el guiado en el vacío seguía la velocidad relativa al aire (la inclinación derivaba \ang{3.1}) y no había estrangulamiento (\num{3.5}\,$g$ en el MECO). Se corrigieron los tres y se volvió a ajustar el guiado.
+  \item \textbf{Documento:} la ecuación del ascenso mezclaba los marcos ECI y ECEF; se justificaba RK45 por la rigidez del problema; se afirmaba la conservación exacta de la energía con Verlet; faltaba el término indirecto; y se citaban como implementados los armónicos esféricos, el NRHO y el HLS, que no lo están. Además, se sustituyó una referencia no verificable por documentos oficiales de la NASA.
+  \item \textbf{Saltos en la exportación.} Al unir tramos se conservaba solo el estado posterior a cada discontinuidad, y el remuestreo interpolaba a través del salto: antes de la DOI, la masa subía de \SI{31}{t} a \SI{301}{t} durante unos dos minutos, con Orion aún en la NRHO. También afectaba a la velocidad en esos tramos. Ahora se conservan ambos lados del salto. La corrección no alteró ningún resultado de \texttt{results.json}.
+\end{enumerate}
+
 %==========================================================================
 \section{Limitaciones}
 %==========================================================================
@@ -438,6 +584,7 @@ Descenso propulsado & HLS & \RMDvPoweredMs & DOI + \RMCoastH~h \\
   \item Órbita lunar circular sin perturbación solar (modelo CR3BP). Las efemérides reales (DE440) y el Sol romperían la periodicidad exacta de la NRHO y obligarían a rediseñar la transferencia en un modelo de efemérides.
   \item El eje de rotación lunar se toma normal a la órbita (en realidad está inclinado unos \ang{6.7}) y los ejes del campo GRGM1200A se identifican con los del marco fijo a la Luna.
   \item Datos del HLS supuestos; superficie lunar esférica, sin topografía.
+  \item En el visualizador, las naves no están a escala y el relieve fino de la Luna en tomas cercanas es decorativo.
 \end{itemize}
 
 %==========================================================================
@@ -452,7 +599,6 @@ Como trabajo futuro se proponen:
   \item Guiado convexo (G-FOLD) para el descenso, topografía lunar (LOLA) y el ascenso del HLS de vuelta a la NRHO.
 \end{enumerate}
 
-%==========================================================================
 \begin{thebibliography}{99}
 \bibitem{nasa2020artemis} NASA (2020). \textit{Artemis Plan: NASA's Lunar Exploration Program Overview}. National Aeronautics and Space Administration, Washington, DC.
 \bibitem{nasa2023slsfacts} NASA (2023). \textit{Space Launch System Fact Sheet} (FS-2023-06-0080-MSFC). Marshall Space Flight Center.
@@ -475,6 +621,7 @@ Como trabajo futuro se proponen:
 \bibitem{ntrs2018esm} NASA (2018). Requisitos del módulo de servicio europeo de Orion. NASA Technical Reports Server, 20180004488.
 \end{thebibliography}
 
+
 \appendix
 \section{Arquitectura del código y reproducibilidad}
 \begin{tabularx}{\textwidth}{@{}lX@{}}
@@ -496,6 +643,8 @@ Como trabajo futuro se proponen:
 \texttt{moon\_frame.py} & Marco fijo a la Luna $\leftrightarrow$ ECI. \\
 \texttt{descent\_solver.py} & DOI, E-guidance, evento de contacto y \texttt{simulate\_descent}. \\
 \texttt{mission.py}, \texttt{pipeline.py} & Encadenan las cinco fases: \texttt{run\_mission}. \\
+\texttt{export.py} & Unión de tramos, remuestreo y formato de \texttt{mission.json}. \\
+\texttt{frontend/} & Visualizador 3D (Three.js): escena, marcos, telemetría, línea de tiempo y narrativa. \\
 \texttt{scripts/run\_mission.py} & Genera todas las figuras, \texttt{results*.tex} y la trayectoria del visualizador. \\
 \bottomrule
 \end{tabularx}
@@ -503,7 +652,8 @@ Como trabajo futuro se proponen:
 \medskip\noindent
 Todos los valores numéricos del texto se insertan automáticamente desde \texttt{results.tex} y \texttt{results\_mission.tex}. Para reproducirlos:
 \begin{verbatim}
-python -m pytest                      # pruebas
+python -m pytest                      # pruebas de Python
+node --test frontend/tests/*.test.mjs # pruebas del visualizador
 python scripts/run_mission.py         # figuras, results*.tex y mission.json
 cd docs/paper/final && pdflatex main.tex && pdflatex main.tex
 \end{verbatim}

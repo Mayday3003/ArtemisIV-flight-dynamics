@@ -26,7 +26,7 @@ export const PHASE_INFO = {
     short: "Ascenso",
     physics: "Empuje, arrastre con Cd(Mach) y masa variable sobre una Tierra en rotación.",
     method: "Dormand–Prince RK45 con eventos",
-    result: "Max-Q 27,5 kPa · MECO a 160 km",
+    result: "Max-Q 29,6 kPa · MECO a 160 km",
   },
   parking: {
     short: "Aparcamiento",
@@ -74,7 +74,7 @@ const SHIP = { frame: "eci", focus: "ship" };
 const LANDING = { frame: "moon", focus: "ship", view: "horizon" };
 
 const EVENT_INFO = [
-  [/Max-Q/, { short: "Max-Q", text: "Máxima presión dinámica: 27,5 kPa. Es el momento de mayor carga aerodinámica sobre el cohete.", shot: { ...SHIP, distance: 1.6, view: "horizon" } }],
+  [/Max-Q/, { short: "Max-Q", text: "Máxima presión dinámica: 29,6 kPa. Es el momento de mayor carga aerodinámica sobre el cohete.", shot: { ...SHIP, distance: 1.6, view: "horizon" } }],
   [/SRB/, { short: "SRB", text: "Los dos propulsores sólidos agotan su combustible y se separan. El vehículo pierde masa de golpe.", shot: { ...SHIP, distance: 1.6, view: "horizon" } }],
   [/MECO|Inserción en órbita/, { short: "MECO", text: "Se apaga la etapa central y la EUS inserta a Orion en la órbita de aparcamiento.", dv: "dv_insertion_ms", shot: { frame: "eci", focus: "earth", distance: 22, dir: SUNLIT } }],
   [/TLI/, { short: "TLI", text: "La EUS impulsa a Orion hacia la Luna y se separa. A partir de aquí, Orion vuela solo.", dv: "dv_tli_ms", shot: { frame: "eci", focus: "earth", distance: 60, dir: SUNLIT } }],

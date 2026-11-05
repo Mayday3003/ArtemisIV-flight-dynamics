@@ -3,9 +3,13 @@
   "private": true,
   "description": "Generador de la presentación Artemis_IV_UdeM.pptx",
   "scripts": {
-    "build": "node build_deck.js"
+    "build": "node build_deck.js",
+    "capture": "node capture_screens.mjs"
   },
   "dependencies": {
     "pptxgenjs": "3.12.0"
+  },
+  "devDependencies": {
+    "playwright-core": "^1.48.0"
   }
 }

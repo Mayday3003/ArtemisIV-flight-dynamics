@@ -48,7 +48,7 @@
 | `docs/paper/final/` | Informe LaTeX de 14 páginas | ✅ |
 | `docs/presentation/` | Presentación de 23 diapositivas (.pptx + .pdf) | ✅ |
 
-**Resultados clave actuales:** Max-Q 27,5 kPa · MECO a 160 km con 6,60 km/s · TLI de 3 150 m/s en 5 iteraciones · Jacobi conservada a ~1e-5.
+**Resultados clave actuales:** Max-Q 29,6 kPa · MECO a 160 km con 6,60 km/s · TLI de 3 150 m/s en 5 iteraciones (3 247 m/s en la misión integrada) · Jacobi conservada a ~1e-5.
 
 ### Lo que existe pero está vacío ⚠️
 

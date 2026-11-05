@@ -7,7 +7,7 @@ Autores: Mariana Lopera Correa, Juan José Becerra Bedoya y Daniel Santiago Mach
 
 | Fase | Física | Método numérico | Resultado |
 |---|---|---|---|
-| 1 · Ascenso (LC-39B → MECO) | Empuje, arrastre con Cd(Mach), masa variable | Dormand–Prince RK45 con eventos | Max-Q 27,5 kPa · MECO a 160 km con 6,60 km/s |
+| 1 · Ascenso (LC-39B → MECO) | Empuje, arrastre con Cd(Mach), masa variable | Dormand–Prince RK45 con eventos | Max-Q 29,6 kPa · MECO a 160 km con 6,60 km/s |
 | 2 · Tránsito Tierra–Luna | Problema restringido de tres cuerpos | Velocity Verlet (simpléctico) | Integral de Jacobi conservada a ~1e-5 |
 | 3 · TLI | Problema de valores en la frontera | Método del disparo + Newton-Raphson | Δv = 3 150 m/s en 5 iteraciones |
 | NRHO de Gateway | CR3BP adimensional + matriz de transición de estados | Corrección diferencial + continuación | NRHO 9:2: periodo 6,56 d, perilunio 3 248 km |
@@ -42,6 +42,7 @@ pip install -r requirements.txt
 | Exportar la misión para la web | `python scripts/export_mission.py` | `frontend/data/mission.json` (Fases 1–5, ~2,2 MB; tarda ~4 min) |
 | Compilar el informe | `cd docs/paper/final && pdflatex main.tex && pdflatex main.tex` | `main.pdf` |
 | Regenerar la presentación | `cd docs/presentation && npm install && npm run build` | `Artemis_IV_UdeM.pptx` |
+| Recapturar imágenes del visualizador | `cd docs/presentation && CHROME=/ruta/a/chrome npm run capture` (con el visualizador en el puerto 8000) | `docs/figures/viz_*.png` |
 | Abrir el visualizador 3D | `python -m http.server 8000 -d frontend` → http://localhost:8000 | Misión completa (Fases 1–5) en el navegador |
 | Pruebas del visualizador | `node --test frontend/tests/*.test.mjs` | Marcos, interpolación, línea de tiempo, telemetría y cifras contra `results.json` |
 | Revisar estilo y tipos | `ruff check src tests scripts && mypy src` | Sin errores |

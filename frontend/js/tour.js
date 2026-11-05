@@ -49,6 +49,10 @@ export function createTour(phases, apply) {
     stop() {
       active = false;
     },
+    /** Da por aplicada la toma de la fase de t, para que no pise una toma de evento. */
+    sync(t) {
+      current = phaseIndexAt(phases, t);
+    },
     /** Llamar en cada cuadro; devuelve true si cambió de toma. */
     update(t) {
       if (!active) return false;

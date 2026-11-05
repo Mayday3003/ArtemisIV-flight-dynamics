@@ -31,6 +31,7 @@ FORMULAS = {
     "eq_shoot": r"$\mathbf{F}(\Delta\mathbf{v}) = \mathbf{r}(t_f;\ \mathbf{r}_0,\ \mathbf{v}_0 + \Delta\mathbf{v}) - \mathbf{r}_{obj} = \mathbf{0}$",
     "eq_newton": r"$J\,\mathbf{d} = -\mathbf{F}, \qquad J_{:,j} = \dfrac{\mathbf{F}(\Delta\mathbf{v} + h\mathbf{e}_j) - \mathbf{F}(\Delta\mathbf{v} - h\mathbf{e}_j)}{2h}$",
     "eq_kepler": r"$t(r_a) = \sqrt{a^3/\mu_E}\,(E - e\sin E) = t_f$",
+    "eq_eguidance": r"$\mathbf{a}_T = \dfrac{6}{t_{go}^2}\left[\mathbf{r}_f - \left(\mathbf{r} + \mathbf{v}\,t_{go} + \frac{1}{2}\mathbf{g}\,t_{go}^2\right)\right] - \dfrac{2}{t_{go}}\left[\mathbf{v}_f - (\mathbf{v} + \mathbf{g}\,t_{go})\right]$",
     "eq_tsiol": r"$\Delta v = I_{sp}\,g_0\,\ln\dfrac{m_0}{m_f}$",
 }
 

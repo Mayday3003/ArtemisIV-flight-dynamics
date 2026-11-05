@@ -115,6 +115,7 @@ async function main() {
       jump(e) {
         showCard(e);
         const { shot } = eventInfo(e.label);
+        tour.sync(e.t);
         if (shot) applyShot(shot);
       },
     }
@@ -257,6 +258,7 @@ async function main() {
       n: manual(() => setFocus("ship")),
       t: manual(() => setFocus("earth")),
       l: manual(() => setFocus("moon")),
+      m: manual(() => applyShot(OVERVIEW)),
       c: toggleScience,
       e: () => (showLabels = !showLabels),
       g: () => setGuided(true),
