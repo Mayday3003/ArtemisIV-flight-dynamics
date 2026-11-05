@@ -74,17 +74,17 @@ const SHIP = { frame: "eci", focus: "ship" };
 const LANDING = { frame: "moon", focus: "ship", view: "horizon" };
 
 const EVENT_INFO = [
-  [/Max-Q/, { short: "Max-Q", text: "Máxima presión dinámica: 27,5 kPa. Es el momento de mayor carga aerodinámica sobre el cohete.", shot: { ...SHIP, distance: 0.6, view: "horizon" } }],
-  [/SRB/, { short: "SRB", text: "Los dos propulsores sólidos agotan su combustible y se separan. El vehículo pierde masa de golpe.", shot: { ...SHIP, distance: 0.6, view: "horizon" } }],
+  [/Max-Q/, { short: "Max-Q", text: "Máxima presión dinámica: 27,5 kPa. Es el momento de mayor carga aerodinámica sobre el cohete.", shot: { ...SHIP, distance: 1.6, view: "horizon" } }],
+  [/SRB/, { short: "SRB", text: "Los dos propulsores sólidos agotan su combustible y se separan. El vehículo pierde masa de golpe.", shot: { ...SHIP, distance: 1.6, view: "horizon" } }],
   [/MECO|Inserción en órbita/, { short: "MECO", text: "Se apaga la etapa central y la EUS inserta a Orion en la órbita de aparcamiento.", dv: "dv_insertion_ms", shot: { frame: "eci", focus: "earth", distance: 22, dir: SUNLIT } }],
   [/TLI/, { short: "TLI", text: "La EUS impulsa a Orion hacia la Luna y se separa. A partir de aquí, Orion vuela solo.", dv: "dv_tli_ms", shot: { frame: "eci", focus: "earth", distance: 60, dir: SUNLIT } }],
   [/OPF/, { short: "OPF", text: "Orion enciende su motor a 1 340 km sobre la Luna y aprovecha su gravedad para llegar a la NRHO.", dv: "dv_opf_ms", shot: { frame: "rot", focus: "moon", distance: 30 } }],
   [/NRI/, { short: "NRI", text: "Orion frena y queda en la órbita de Gateway, una NRHO 9:2 sincronizada con la Luna.", dv: "dv_nri_ms", shot: { frame: "rot", focus: "moon", distance: 170, dir: [0.92, -0.38, 0.08] } }],
   [/DOI/, { short: "DOI", text: "El HLS deja la NRHO, poco antes del perilunio, hacia una elipse que baja a 15 km. La masa mostrada pasa a ser la del HLS.", dv: "dv_doi_ms", shot: { frame: "moon", focus: "moon", distance: 9, dir: [0.8, -0.45, -0.4] } }],
   [/PDI/, { short: "PDI", text: "Empieza el descenso propulsado con E-guidance: 700 s de motor, con un máximo de 87 % de empuje.", dv: "dv_powered_ms", shot: { ...LANDING, distance: 0.8 } }],
-  [/High gate/, { short: "High gate", text: "Termina el frenado y empieza la aproximación al sitio.", shot: { ...LANDING, distance: 0.3 } }],
-  [/Low gate/, { short: "Low gate", text: "A 100 m sobre el sitio comienza el descenso vertical, que termina a 1 m/s.", shot: { ...LANDING, distance: 0.3 } }],
-  [/Alunizaje/, { short: "Contacto", text: "Contacto con la superficie en la región polar sur.", shot: { ...LANDING, distance: 0.3 } }],
+  [/High gate/, { short: "High gate", text: "Termina el frenado y empieza la aproximación al sitio.", shot: { ...LANDING, distance: 0.45 } }],
+  [/Low gate/, { short: "Low gate", text: "A 100 m sobre el sitio comienza el descenso vertical, que termina a 1 m/s.", shot: { ...LANDING, distance: 0.45 } }],
+  [/Alunizaje/, { short: "Contacto", text: "Contacto con la superficie en la región polar sur.", shot: { ...LANDING, distance: 0.45 } }],
 ];
 
 export function eventInfo(label) {

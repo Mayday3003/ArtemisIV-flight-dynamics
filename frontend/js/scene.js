@@ -45,6 +45,47 @@ function atmosphere(radius) {
   );
 }
 
+/**
+ * Relieve procedural que aparece al acercarse, donde el mapa ya no tiene resolución (y en los
+ * polos se estira). Es decorativo: no representa terreno real.
+ */
+function addSurfaceDetail(material) {
+  material.onBeforeCompile = (shader) => {
+    shader.vertexShader = shader.vertexShader
+      .replace("#include <common>", "#include <common>\nvarying vec3 vObjectPos;")
+      .replace("#include <begin_vertex>", "#include <begin_vertex>\nvObjectPos = position;");
+    shader.fragmentShader = shader.fragmentShader
+      .replace(
+        "#include <common>",
+        `#include <common>
+        varying vec3 vObjectPos;
+        float hash3(vec3 p) {
+          p = fract(p * 0.1031);
+          p += dot(p, p.zyx + 31.32);
+          return fract((p.x + p.y) * p.z);
+        }
+        float valueNoise(vec3 p) {
+          vec3 i = floor(p);
+          vec3 f = fract(p);
+          f = f * f * (3.0 - 2.0 * f);
+          return mix(
+            mix(mix(hash3(i), hash3(i + vec3(1, 0, 0)), f.x),
+                mix(hash3(i + vec3(0, 1, 0)), hash3(i + vec3(1, 1, 0)), f.x), f.y),
+            mix(mix(hash3(i + vec3(0, 0, 1)), hash3(i + vec3(1, 0, 1)), f.x),
+                mix(hash3(i + vec3(0, 1, 1)), hash3(i + vec3(1, 1, 1)), f.x), f.y), f.z);
+        }`
+      )
+      .replace(
+        "#include <map_fragment>",
+        `#include <map_fragment>
+        float detail = 0.45 * valueNoise(vObjectPos * 45.0) + 0.3 * valueNoise(vObjectPos * 170.0)
+          + 0.17 * valueNoise(vObjectPos * 640.0) + 0.08 * valueNoise(vObjectPos * 2400.0);
+        float nearness = 1.0 - smoothstep(0.3, 3.0, length(vViewPosition));
+        diffuseColor.rgb *= mix(1.0, 0.55 + 0.9 * detail, nearness);`
+      );
+  };
+}
+
 /** Esfera con los polos sobre el eje Z (SphereGeometry los pone sobre Y). */
 function zUpSphere(radius, segments) {
   const geo = new THREE.SphereGeometry(radius, segments, segments / 2);
@@ -117,6 +158,7 @@ export function createScene(container, bodies) {
     zUpSphere(bodies.moon.radius_km / KM_PER_UNIT, 256),
     new THREE.MeshStandardMaterial({ map: texture(renderer, "moon_lroc_4k.jpg"), roughness: 1 })
   );
+  addSurfaceDetail(moon.material);
   moon.matrixAutoUpdate = false;
   scene.add(moon);
 

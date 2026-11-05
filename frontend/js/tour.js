@@ -10,12 +10,12 @@ export const SUNLIT = [0.82, -0.5, 0.3];
  * modo Auto de la línea de tiempo. Fases sin toma usan DEFAULT_SHOT.
  */
 export const TOUR_SHOTS = {
-  ascent: { frame: "eci", focus: "ship", distance: 0.6, view: "horizon" },
+  ascent: { frame: "eci", focus: "ship", distance: 1.6, view: "horizon" },
   parking: { frame: "eci", focus: "earth", distance: 22, dir: SUNLIT },
   transit: { frame: "rot", focus: "system", distance: 620, dir: [0.1, -0.62, 0.78] },
   nrho: { frame: "rot", focus: "moon", distance: 170, dir: [0.92, -0.38, 0.08] },
   descent: { frame: "moon", focus: "moon", distance: 9, dir: [0.8, -0.45, -0.4] },
-  landing: { frame: "moon", focus: "ship", distance: 0.5, view: "horizon" },
+  landing: { frame: "moon", focus: "ship", distance: 0.7, view: "horizon" },
 };
 export const DEFAULT_SHOT = { frame: "eci", focus: "ship", distance: 3 };
 

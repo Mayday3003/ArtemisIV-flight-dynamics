@@ -70,13 +70,18 @@ class MissionTrajectory:
             raise ValueError("Los instantes t deben ser estrictamente crecientes.")
 
 
+JUMP_EPS_S = 1e-3  # separación entre los estados anterior y posterior a una discontinuidad
+
+
 def concatenate_segments(
     segments: list[tuple[npt.NDArray[np.float64], npt.NDArray[np.float64]]],
 ) -> tuple[npt.NDArray[np.float64], npt.NDArray[np.float64]]:
     """Une tramos (t, y) consecutivos; ante instantes repetidos conserva el último.
 
     En una discontinuidad física (separación de etapas, encendido impulsivo) el mismo instante
-    aparece al final de un tramo y al inicio del siguiente; se conserva el estado posterior.
+    aparece al final de un tramo y al inicio del siguiente: el estado posterior queda en ese
+    instante y el anterior se adelanta JUMP_EPS_S, para que interpolar el último paso del tramo
+    no reparta el salto a lo largo de ese paso.
     """
     t_all = np.concatenate([seg[0] for seg in segments])
     y_all = np.concatenate([seg[1] for seg in segments], axis=1)
@@ -84,6 +89,11 @@ def concatenate_segments(
     t_all, y_all = t_all[order], y_all[:, order]
     keep = np.ones(t_all.size, dtype=bool)
     keep[:-1] = np.diff(t_all) > 0.0  # de cada grupo de instantes iguales queda el último
+    for i in np.flatnonzero(~keep):
+        room = i == 0 or t_all[i] - JUMP_EPS_S > t_all[i - 1]
+        if room and not np.array_equal(y_all[:, i], y_all[:, i + 1]):
+            t_all[i] -= JUMP_EPS_S
+            keep[i] = True
     return t_all[keep], y_all[:, keep]
 
 
@@ -129,6 +139,9 @@ def resample(
             raise ValueError(f"Falta un paso de muestreo positivo para la fase '{ph.id}'.")
         grid = np.arange(ph.t_start, ph.t_end, dt)
         times.append(np.append(grid, ph.t_end))
+    # Los saltos conservan su estado anterior (ver concatenate_segments): se muestrean ambos lados
+    is_jump_side = np.isclose(np.diff(traj.t), JUMP_EPS_S, rtol=1e-6, atol=0.0)
+    times += [traj.t[:-1][is_jump_side], traj.t[1:][is_jump_side]]
     tq = np.unique(np.concatenate(times))
     return MissionTrajectory(
         t=tq,

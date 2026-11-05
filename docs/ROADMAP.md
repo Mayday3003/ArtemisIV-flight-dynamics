@@ -383,11 +383,11 @@ frontend/
 
 | Maniobra | Quién | Δv | Cuándo |
 |---|---|---|---|
-| TLI | EUS | 3 240 m/s | T+2 h 20 min |
-| OPF, sobrevuelo propulsado a 995 km de altitud | Orion (OMS-E) | 304 m/s | TLI + 3,09 d |
-| NRI, inserción en la NRHO | Orion (OMS-E) | 174 m/s | TLI + 4,49 d |
+| TLI | EUS | 3 247 m/s | T+2 h 20 min |
+| OPF, sobrevuelo propulsado a 1 340 km de altitud | Orion (OMS-E) | 291 m/s | TLI + 3,16 d |
+| NRI, inserción en la NRHO | Orion (OMS-E) | 172 m/s | TLI + 4,59 d |
 
-Orion + I-Hab pasa de 36,5 t a 31,3 t; con el I-Hab acoplado el ESM puede dar 833 m/s, así que la transferencia usa el 57 %. Referencia de orden de magnitud: en Artemis I el OPF fue de ≈ 180 m/s y la inserción en la DRO de ≈ 110–150 m/s (ESA, *Orion blog*); NASA cifra la inserción + salida de la NRHO en ≈ 1 000 m/s combinados.
+Orion + I-Hab pasa de 36,5 t a 31,4 t; con el I-Hab acoplado el ESM puede dar 833 m/s, así que la transferencia usa el 56 %. Referencia de orden de magnitud: en Artemis I el OPF fue de ≈ 180 m/s y la inserción en la DRO de ≈ 110–150 m/s (ESA, *Orion blog*); NASA cifra la inserción + salida de la NRHO en ≈ 1 000 m/s combinados.
 
 **Cambios respecto al plan:**
 - **Perfil OPF + NRI en vez de inserción directa:** en el marco rotante la nave llega con v∞ hacia −y y la NRHO sur pasa por el perilunio hacia +y; insertar ahí directamente costaba > 1,4 km/s.

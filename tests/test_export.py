@@ -10,6 +10,7 @@ import pytest
 from artemis_sim.constants import EARTH, MOON
 from artemis_sim.ephemeris import LunarOrbitConfig, get_body_position, get_body_velocity
 from artemis_sim.export import (
+    JUMP_EPS_S,
     MissionPhase,
     MissionTrajectory,
     concatenate_segments,
@@ -69,8 +70,9 @@ class TestSegmentsAndResample:
         t1, t2 = np.array([0.0, 1.0]), np.array([1.0, 2.0])
         y1, y2 = np.ones((7, 2)), np.full((7, 2), 2.0)
         t, y = concatenate_segments([(t1, y1), (t2, y2)])
-        assert list(t) == [0.0, 1.0, 2.0]
-        assert y[6, 1] == 2.0  # en t = 1 queda el estado posterior (p. ej. tras separar etapas)
+        assert list(t) == [0.0, 1.0 - JUMP_EPS_S, 1.0, 2.0]
+        assert y[6, 1] == 1.0  # justo antes queda el estado anterior
+        assert y[6, 2] == 2.0  # en t = 1 queda el posterior (p. ej. tras separar etapas)
 
     def test_resample_includes_phase_bounds_and_is_increasing(self) -> None:
         t = np.linspace(0.0, 1000.0, 2001)
@@ -143,3 +145,17 @@ class TestMission:
         assert traj.phases[-1].t_end == pytest.approx(traj.t[-1])
         # La masa nunca aumenta
         assert np.all(np.diff(traj.y[6]) <= 1e-9)
+
+
+def test_a_jump_stays_abrupt_after_resampling() -> None:
+    """Una discontinuidad no se reparte sobre el último paso del tramo anterior."""
+    t1 = np.array([0.0, 100.0])
+    t2 = np.array([100.0, 110.0])
+    y1 = np.zeros((7, 2))
+    y2 = np.zeros((7, 2))
+    y1[6], y2[6] = 30.0, 300.0
+    t, y = concatenate_segments([(t1, y1), (t2, y2)])
+    traj = MissionTrajectory(t, y, [MissionPhase("a", "A", 0.0, 100.0), MissionPhase("b", "B", 100.0, 110.0)], [], None)
+    out = resample(traj, {"a": 40.0, "b": 5.0})
+    assert np.all(out.y[6, out.t < 100.0] == 30.0)
+    assert np.all(out.y[6, out.t >= 100.0] == 300.0)

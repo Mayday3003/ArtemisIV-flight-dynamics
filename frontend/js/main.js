@@ -22,6 +22,7 @@ const CAMERA_MOVE_S = 1.4;
 const SHIP_TO_BODY = 0.28;
 const SHIP_MIN = 0.005;
 const SHIP_MAX = 0.05;
+const SHIP_LABEL = { sls: "SLS", core: "SLS", eus: "EUS + Orion", orion: "Orion", hls: "HLS" };
 
 /** Distancia de cámara al cambiar de foco (unidades de escena = 1 000 km). */
 const FOCUS_DISTANCE = { earth: 30, moon: 9, ship: 3, system: 620 };
@@ -163,7 +164,7 @@ async function main() {
 
   function setFocus(key, distance) {
     const near = key === "ship" && state.t < phases[0].t_end;
-    moveCamera(key, distance ?? (near ? 0.6 : FOCUS_DISTANCE[key]));
+    moveCamera(key, distance ?? (near ? 1.6 : FOCUS_DISTANCE[key]));
   }
 
   function applyShot(shot) {
@@ -345,9 +346,10 @@ async function main() {
     ship.position.copy(rel(shipF));
 
     const vehicle = vehicleAt(t, events);
-    if (vehicle.name !== vehicleName) {
-      vehicleName = vehicle.name;
-      label.ship.el.textContent = vehicle.id === "hls" ? "HLS" : vehicle.id === "orion" ? "Orion" : vehicle.id === "eus" ? "EUS + Orion" : "SLS";
+    const shipName = landed ? "HLS · sitio de alunizaje, 86,8° S" : SHIP_LABEL[vehicle.id];
+    if (shipName !== vehicleName) {
+      vehicleName = shipName;
+      label.ship.el.textContent = shipName;
       label.ship.w = 0;
     }
 
